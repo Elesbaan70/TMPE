@@ -39,9 +39,12 @@ namespace TrafficManager.State {
         /// </summary>
         internal static ExtVehicleType?[][] laneAllowedVehicleTypesArray; // for faster, lock-free access, 1st index: segment id, 2nd index: lane index
 
+        internal static LaneConfigurationFlags?[][] laneConfigurationFlagsArray; // 1st index: segment id, 2nd index: lane index
+
         static Flags() {
             laneConnections = new uint[NetManager.MAX_LANE_COUNT][][];
             laneAllowedVehicleTypesArray = new ExtVehicleType?[NetManager.MAX_SEGMENT_COUNT][];
+            laneConfigurationFlagsArray = new LaneConfigurationFlags?[NetManager.MAX_SEGMENT_COUNT][];
             laneArrowFlags = new LaneArrows?[NetManager.MAX_LANE_COUNT];
             highwayLaneArrowFlags = new LaneArrows?[NetManager.MAX_LANE_COUNT];
         }
@@ -116,6 +119,22 @@ namespace TrafficManager.State {
                     if (laneAllowedVehicleTypesArray[i][x] == null)
                         continue;
                     Log.Info($"\tLane idx {x}: {laneAllowedVehicleTypesArray[i][x]}");
+                }
+            }
+
+            Log.Info("--------------------------------");
+            Log.Info("--- LANE CONFIGURATION FLAGS ---");
+            Log.Info("--------------------------------");
+            for (uint i = 0; i < laneConfigurationFlagsArray.Length; ++i) {
+                ref NetSegment netSegment = ref ((ushort)i).ToSegment();
+
+                if (laneConfigurationFlagsArray[i] == null)
+                    continue;
+                Log.Info($"Segment {i}: valid? {netSegment.IsValid()}");
+                for (int x = 0; x < laneConfigurationFlagsArray[i].Length; ++x) {
+                    if (laneConfigurationFlagsArray[i][x] == null)
+                        continue;
+                    Log.Info($"\tLane idx {x}: {laneConfigurationFlagsArray[i][x]}");
                 }
             }
         }
@@ -519,11 +538,13 @@ namespace TrafficManager.State {
             }
         }
 
-        public static void SetLaneAllowedVehicleTypes(ushort segmentId,
-                                                      uint laneIndex,
-                                                      uint laneId,
-                                                      ExtVehicleType vehicleTypes)
-        {
+        private static void SetLaneFlags<T>(ref T?[][] array,
+                                            ushort segmentId,
+                                            uint laneIndex,
+                                            uint laneId,
+                                            T value)
+            where T : struct {
+
             if (segmentId <= 0 || laneId <= 0) {
                 return;
             }
@@ -547,35 +568,59 @@ namespace TrafficManager.State {
             }
 
 #if DEBUGFLAGS
-            Log._Debug("Flags.setLaneAllowedVehicleTypes: setting allowed vehicles of lane index " +
-                       $"{laneIndex} @ seg. {segmentId} to {vehicleTypes.ToString()}");
+            Log._Debug($"Flags.SetLaneFlags<{typeof(T).Name}>: setting flags of lane index " +
+                       $"{laneIndex} @ seg. {segmentId} to {value.ToString()}");
 #endif
 
-            // save allowed vehicle types into the fast-access array.
+            // save flags into the fast-access array.
             // (1) ensure that the array is defined and large enough
-            if (laneAllowedVehicleTypesArray[segmentId] == null) {
-                laneAllowedVehicleTypesArray[segmentId] = new ExtVehicleType?[segmentInfo.m_lanes.Length];
-            } else if (laneAllowedVehicleTypesArray[segmentId].Length <
+            if (array[segmentId] == null) {
+                array[segmentId] = new T?[segmentInfo.m_lanes.Length];
+            } else if (array[segmentId].Length <
                        segmentInfo.m_lanes.Length) {
-                ExtVehicleType?[] oldArray = laneAllowedVehicleTypesArray[segmentId];
-                laneAllowedVehicleTypesArray[segmentId] = new ExtVehicleType?[segmentInfo.m_lanes.Length];
-                Array.Copy(oldArray, laneAllowedVehicleTypesArray[segmentId], oldArray.Length);
+                T?[] oldArray = array[segmentId];
+                array[segmentId] = new T?[segmentInfo.m_lanes.Length];
+                Array.Copy(oldArray, array[segmentId], oldArray.Length);
             }
 
-            // (2) insert the custom speed limit
-            laneAllowedVehicleTypesArray[segmentId][laneIndex] = vehicleTypes;
+            // (2) insert the flag
+            array[segmentId][laneIndex] = value;
         }
 
-        public static void ResetSegmentVehicleRestrictions(ushort segmentId) {
+        public static void SetLaneAllowedVehicleTypes(ushort segmentId,
+                                                      uint laneIndex,
+                                                      uint laneId,
+                                                      ExtVehicleType vehicleTypes)
+        {
+            SetLaneFlags(ref laneAllowedVehicleTypesArray, segmentId, laneIndex, laneId, vehicleTypes);
+        }
+
+        public static void SetLaneConfigurationFlags(ushort segmentId,
+                                                      uint laneIndex,
+                                                      uint laneId,
+                                                      LaneConfigurationFlags flags) {
+
+            SetLaneFlags(ref laneConfigurationFlagsArray, segmentId, laneIndex, laneId, flags);
+        }
+
+        private static void ResetSegmentLaneFlags<T>(ref T?[][] array, ushort segmentId)
+            where T : struct {
+
             if (segmentId <= 0) {
                 return;
             }
-#if DEBUGFLAGS
-            Log._Debug("Flags.resetSegmentVehicleRestrictions: Resetting vehicle restrictions " +
+#if true// DEBUGFLAGS
+            Log._Debug($"Flags.ResetSegmentLaneFlags<{typeof(T).Name}>: Resetting flags " +
                        $"of segment {segmentId}.");
 #endif
-            laneAllowedVehicleTypesArray[segmentId] = null;
+            array[segmentId] = null;
         }
+
+        public static void ResetSegmentVehicleRestrictions(ushort segmentId)
+            => ResetSegmentLaneFlags(ref laneAllowedVehicleTypesArray, segmentId);
+
+        public static void ResetSegmentLaneConfigurationFlags(ushort segmentId)
+            => ResetSegmentLaneFlags(ref laneConfigurationFlagsArray, segmentId);
 
         public static void ResetSegmentArrowFlags(ushort segmentId) {
             if (segmentId <= 0) {
@@ -771,8 +816,10 @@ namespace TrafficManager.State {
             return false;
         }
 
-        internal static IDictionary<uint, ExtVehicleType> GetAllLaneAllowedVehicleTypes() {
-            IDictionary<uint, ExtVehicleType> ret = new Dictionary<uint, ExtVehicleType>();
+        private static IDictionary<uint, T> GetAllLaneflags<T>(ref T?[][] array, Func<NetInfo.Lane, bool> filter)
+            where T : struct {
+
+            IDictionary<uint, T> ret = new Dictionary<uint, T>();
             ExtSegmentManager extSegmentManager = ExtSegmentManager.Instance;
 
             for (ushort segmentId = 0; segmentId < NetManager.MAX_SEGMENT_COUNT; ++segmentId) {
@@ -781,34 +828,40 @@ namespace TrafficManager.State {
                     continue;
                 }
 
-                ExtVehicleType?[] allowedTypes = laneAllowedVehicleTypesArray[segmentId];
-                if (allowedTypes == null) {
+                T?[] values = array[segmentId];
+                if (values == null) {
                     continue;
                 }
 
                 foreach (LaneIdAndIndex laneIdAndIndex in extSegmentManager.GetSegmentLaneIdsAndLaneIndexes(segmentId)) {
                     NetInfo.Lane laneInfo = segment.Info.m_lanes[laneIdAndIndex.laneIndex];
 
-                    if (laneInfo.m_vehicleType == VehicleInfo.VehicleType.None) {
+                    if (!filter(laneInfo)) {
                         continue;
                     }
 
-                    if (laneIdAndIndex.laneIndex >= allowedTypes.Length) {
+                    if (laneIdAndIndex.laneIndex >= values.Length) {
                         continue;
                     }
 
-                    ExtVehicleType? allowedType = allowedTypes[laneIdAndIndex.laneIndex];
+                    T? value = values[laneIdAndIndex.laneIndex];
 
-                    if (allowedType == null) {
+                    if (value == null) {
                         continue;
                     }
 
-                    ret.Add(laneIdAndIndex.laneId, (ExtVehicleType)allowedType);
+                    ret.Add(laneIdAndIndex.laneId, value.Value);
                 }
             }
 
             return ret;
         }
+
+        internal static IDictionary<uint, ExtVehicleType> GetAllLaneAllowedVehicleTypes()
+            => GetAllLaneflags(ref laneAllowedVehicleTypesArray, laneInfo => laneInfo.m_vehicleType != VehicleInfo.VehicleType.None);
+
+        internal static IDictionary<uint, LaneConfigurationFlags> GetAllLaneConfigurationFlags()
+            => GetAllLaneflags(ref laneConfigurationFlagsArray, laneInfo => laneInfo.m_vehicleType == VehicleInfo.VehicleType.None);
 
         public static LaneArrows? GetLaneArrowFlags(uint laneId) {
             return laneArrowFlags[laneId];
@@ -948,6 +1001,10 @@ namespace TrafficManager.State {
 
             for (uint i = 0; i < laneAllowedVehicleTypesArray.Length; ++i) {
                 laneAllowedVehicleTypesArray[i] = null;
+            }
+
+            for (uint i = 0; i < laneConfigurationFlagsArray.Length; ++i) {
+                laneConfigurationFlagsArray[i] = null;
             }
 
             for (uint i = 0; i < laneArrowFlags.Length; ++i) {
