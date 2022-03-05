@@ -25,6 +25,8 @@ namespace TrafficManager.UI.Textures {
         public IDictionary<ExtVehicleType, IDictionary<bool, Texture2D>> VehicleRestrictionTextures;
         public IDictionary<ExtVehicleType, Texture2D> VehicleInfoSignTextures;
 
+        public IDictionary<LaneConfigurationFlags, Texture2D> LaneConfigurationInfoSignTextures;
+
         [Obsolete("These are now available via RoadSignThemes.ActiveTheme.Parking(bool)")]
         public IDictionary<bool, Texture2D> ParkingRestrictionTextures;
 
@@ -103,6 +105,16 @@ namespace TrafficManager.UI.Textures {
             VehicleInfoSignTextures[ExtVehicleType.Service] = LoadDllResource("RoadUI.service_infosign.png", signSize);
             VehicleInfoSignTextures[ExtVehicleType.Taxi] = LoadDllResource("RoadUI.taxi_infosign.png", signSize);
             VehicleInfoSignTextures[ExtVehicleType.Tram] = LoadDllResource("RoadUI.tram_infosign.png", signSize);
+
+            string direction = Shortcuts.LHT ? "lht" : "rht";
+
+            LaneConfigurationInfoSignTextures = new Dictionary<LaneConfigurationFlags, Texture2D> {
+                [LaneConfigurationFlags.CrossLeft] = LoadDllResource("RoadUI.crossleft_infosign.png", signSize),
+                [LaneConfigurationFlags.CrossRight] = LoadDllResource("RoadUI.crossright_infosign.png", signSize),
+                [LaneConfigurationFlags.TurnOutOfDisplaced] = LoadDllResource($"RoadUI.turnoutofdisplaced_{direction}_infosign.png", signSize),
+                [LaneConfigurationFlags.TurnIntoDisplaced] = LoadDllResource($"RoadUI.turnintodisplaced_{direction}_infosign.png", signSize),
+                [LaneConfigurationFlags.ForwardDisplaced] = LoadDllResource($"RoadUI.forwarddisplaced_{direction}_infosign.png", signSize),
+            };
 
             base.OnLevelLoading();
         }

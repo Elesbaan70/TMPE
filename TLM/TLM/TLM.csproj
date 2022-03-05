@@ -1125,6 +1125,16 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\whats_new.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="Resources\RoadUI\crossleft_infosign.png" />
+    <Content Include="Resources\RoadUI\crossright_infosign.png" />
+    <Content Include="Resources\RoadUI\forwarddisplaced_lht_infosign.png" />
+    <Content Include="Resources\RoadUI\forwarddisplaced_rht_infosign.png" />
+    <Content Include="Resources\RoadUI\turnintodisplaced_lht_infosign.png" />
+    <Content Include="Resources\RoadUI\turnintodisplaced_rht_infosign.png" />
+    <Content Include="Resources\RoadUI\turnoutofdisplaced_lht_infosign.png" />
+    <Content Include="Resources\RoadUI\turnoutofdisplaced_rht_infosign.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="PostBuildMacros">
     <!-- Code from https://superuser.com/questions/82231/how-do-i-do-comments-at-a-windows-command-prompt -->
