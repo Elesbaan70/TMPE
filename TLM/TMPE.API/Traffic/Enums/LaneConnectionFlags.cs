@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 
 namespace TrafficManager.API.Traffic.Enums {
-    public enum LaneConfigurationFlags {
+    public enum LaneConnectionFlags {
         None = 0,
         CrossLeft = 1,
         CrossRight = 1 << 1,

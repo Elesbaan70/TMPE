@@ -126,6 +126,7 @@
     <Compile Include="Traffic\Data\KmphValue.cs">
       <DependentUpon>SpeedValue.cs</DependentUpon>
     </Compile>
+    <Compile Include="Traffic\Data\LaneConnection.cs" />
     <Compile Include="Traffic\Data\LaneTrafficData.cs" />
     <Compile Include="Traffic\Data\MphValue.cs">
       <DependentUpon>SpeedValue.cs</DependentUpon>
@@ -151,7 +152,7 @@
     <Compile Include="Traffic\Enums\FlowWaitCalcMode.cs" />
     <Compile Include="Traffic\Enums\GeometryCalculationMode.cs" />
     <Compile Include="Traffic\Enums\LaneArrows.cs" />
-    <Compile Include="Traffic\Enums\LaneConfigurationFlags.cs" />
+    <Compile Include="Traffic\Enums\LaneConnectionFlags.cs" />
     <Compile Include="Traffic\Enums\LaneEndTransitionType.cs" />
     <Compile Include="Traffic\Enums\LightMode.cs" />
     <Compile Include="Traffic\Enums\ParkedCarApproachState.cs" />

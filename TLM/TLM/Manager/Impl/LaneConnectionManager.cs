@@ -34,11 +34,52 @@ namespace TrafficManager.Manager.Impl {
 
         public VehicleInfo.VehicleType VehicleTypes => VEHICLE_TYPES;
 
+        private static readonly bool[] compatibleNodeOrder = new[] { true, false };
+
         static LaneConnectionManager() {
             Instance = new LaneConnectionManager();
         }
 
+        private LaneConnectionManager() {
+            LaneConnections = new LaneConnection[NetManager.MAX_LANE_COUNT * 2];
+            for (uint i = 0; i < NetManager.MAX_LANE_COUNT; ++i) {
+                LaneConnections[GetIndex(i, true)] = new LaneConnection((ushort)i, true);
+                LaneConnections[GetIndex(i, false)] = new LaneConnection((ushort)i, false);
+            }
+        }
+
+        public int GetIndex(uint laneId, bool startNode) {
+            return (int)(laneId * 2) + (startNode ? 0 : 1);
+        }
+
+        public int GetIndex(uint laneId, ushort nodeId) {
+            bool found = false;
+            bool startNode = false;
+
+            ref NetSegment segment = ref laneId.ToLane().m_segment.ToSegment();
+            if (segment.m_startNode == nodeId) {
+                found = true;
+                startNode = true;
+            } else if (segment.m_endNode == nodeId) {
+                found = true;
+            }
+
+            if (!found) {
+                Log.Warning(
+                    $"ExtSegmentEndManager.GetIndex({laneId}, {nodeId}): Node is not " +
+                    "connected to segment.");
+                return -1;
+            }
+
+            return GetIndex(laneId, startNode);
+        }
+
         public static LaneConnectionManager Instance { get; }
+
+        /// <summary>
+        /// All additional data for segment ends
+        /// </summary>
+        public LaneConnection[] LaneConnections { get; }
 
         protected override void InternalPrintDebugInfo() {
             base.InternalPrintDebugInfo();
@@ -50,15 +91,9 @@ namespace TrafficManager.Manager.Impl {
                 return true;
             }
 
-            if (targetLaneId == 0 || Flags.laneConnections[sourceLaneId] == null) {
-                return false;
-            }
+            uint[] connectedLanes = LaneConnections[GetIndex(sourceLaneId, sourceStartNode)].connectedLaneIds;
 
-            int nodeArrayIndex = sourceStartNode ? 0 : 1;
-
-            uint[] connectedLanes = Flags.laneConnections[sourceLaneId][nodeArrayIndex];
-            return connectedLanes != null
-                   && connectedLanes.Any(laneId => laneId == targetLaneId);
+            return connectedLanes?.Any(laneId => laneId == targetLaneId) == true;
         }
 
         /// <summary>
@@ -92,10 +127,7 @@ namespace TrafficManager.Manager.Impl {
                 return false;
             }
 
-            int nodeArrayIndex = startNode ? 0 : 1;
-
-            return Flags.laneConnections[sourceLaneId] != null &&
-                   Flags.laneConnections[sourceLaneId][nodeArrayIndex] != null;
+            return LaneConnections[GetIndex(sourceLaneId, startNode)].connectedLaneIds != null;
         }
 
         /// <summary>
@@ -171,16 +203,9 @@ namespace TrafficManager.Manager.Impl {
                 return 0;
             }
 
-            if (Flags.laneConnections[sourceLaneId] == null) {
-                return 0;
-            }
+            int laneConnectionIndex = GetIndex(sourceLaneId, startNode);
 
-            int nodeArrayIndex = startNode ? 0 : 1;
-            if (Flags.laneConnections[sourceLaneId][nodeArrayIndex] == null) {
-                return 0;
-            }
-
-            return Flags.laneConnections[sourceLaneId][nodeArrayIndex].Length;
+            return LaneConnections[laneConnectionIndex].connectedLaneIds?.Length ?? 0;
         }
 
         /// <summary>
@@ -193,12 +218,7 @@ namespace TrafficManager.Manager.Impl {
                 return null;
             }
 
-            if (Flags.laneConnections[laneId] == null) {
-                return null;
-            }
-
-            int nodeArrayIndex = startNode ? 0 : 1;
-            return Flags.laneConnections[laneId][nodeArrayIndex];
+            return LaneConnections[GetIndex(laneId, startNode)].connectedLaneIds;
         }
 
         /// <summary>
@@ -220,7 +240,7 @@ namespace TrafficManager.Manager.Impl {
                            $"{startNode1}) called.");
             }
 
-            bool ret = Flags.RemoveLaneConnection(laneId1, laneId2, startNode1);
+            bool ret = RemoveConnectedLane(laneId1, laneId2, startNode1);
 
             if (logLaneConnections) {
                 Log._Debug($"LaneConnectionManager.RemoveLaneConnection({laneId1}, {laneId2}, " +
@@ -335,13 +355,9 @@ namespace TrafficManager.Manager.Impl {
                            $"{startNode}) called.");
             }
 
-            if (Flags.laneConnections[laneId] == null) {
-                return;
-            }
+            int laneConnectionIndex = GetIndex(laneId, startNode);
 
-            int nodeArrayIndex = startNode ? 0 : 1;
-
-            if (Flags.laneConnections[laneId][nodeArrayIndex] == null) {
+            if (LaneConnections[laneConnectionIndex].connectedLaneIds == null) {
                 return;
             }
 
@@ -359,7 +375,7 @@ namespace TrafficManager.Manager.Impl {
                     }
             }*/
 
-            Flags.RemoveLaneConnections(laneId, startNode);
+            RemoveConnectedLanes(laneId, startNode);
 
             if (recalcAndPublish) {
                 ushort segment = laneId.ToLane().m_segment;
@@ -385,7 +401,7 @@ namespace TrafficManager.Manager.Impl {
                 return false;
             }
 
-            bool ret = Flags.AddLaneConnection(sourceLaneId, targetLaneId, sourceStartNode);
+            bool ret = AddConnectedLane(sourceLaneId, targetLaneId, sourceStartNode);
 
 #if DEBUG
             bool logLaneConnections = DebugSwitch.LaneConnections.Get();
@@ -832,13 +848,9 @@ namespace TrafficManager.Manager.Impl {
 
             for (uint i = 0; i < Singleton<NetManager>.instance.m_lanes.m_buffer.Length; i++) {
                 try {
-                    if (Flags.laneConnections[i] == null) {
-                        continue;
-                    }
+                    foreach (bool startNode in compatibleNodeOrder) {
 
-                    for (int nodeArrayIndex = 0; nodeArrayIndex <= 1; ++nodeArrayIndex) {
-                        uint[] connectedLaneIds = Flags.laneConnections[i][nodeArrayIndex];
-                        bool startNode = nodeArrayIndex == 0;
+                        uint[] connectedLaneIds = LaneConnections[GetIndex(i, startNode)].connectedLaneIds;
 
                         if (connectedLaneIds == null) {
                             continue;
@@ -880,6 +892,253 @@ namespace TrafficManager.Manager.Impl {
             }
 
             return ret;
+        }
+
+        /// <summary>
+        /// Removes lane connections that point from lane <paramref name="sourceLaneId"/> to lane
+        /// <paramref name="targetLaneId"/> at node <paramref name="startNode"/>.
+        /// </summary>
+        /// <param name="sourceLaneId"></param>
+        /// <param name="targetLaneId"></param>
+        /// <param name="startNode"></param>
+        /// <returns></returns>
+        private bool RemoveSingleConnectedLane(uint sourceLaneId,
+                                                uint targetLaneId,
+                                                bool startNode) {
+#if DEBUGFLAGS
+            Log._Debug(
+                $"LaneConnectionManager.RemoveSingleConnectedLane({sourceLaneId}, {targetLaneId}, {startNode}) called.");
+#endif
+            var laneConnectionIndex = GetIndex(sourceLaneId, startNode);
+
+            if (LaneConnections[laneConnectionIndex].connectedLaneIds == null)
+                return false;
+
+            uint[] srcLaneIds = LaneConnections[laneConnectionIndex].connectedLaneIds;
+
+            bool ret = false;
+            int remainingConnections = 0;
+            for (int i = 0; i < srcLaneIds.Length; ++i) {
+                if (srcLaneIds[i] != targetLaneId) {
+                    ++remainingConnections;
+                } else {
+                    ret = true;
+                    srcLaneIds[i] = 0;
+                }
+            }
+
+            if (remainingConnections <= 0) {
+                LaneConnections[laneConnectionIndex].connectedLaneIds = null;
+                return ret;
+            }
+
+            if (remainingConnections != srcLaneIds.Length) {
+                LaneConnections[laneConnectionIndex].connectedLaneIds = new uint[remainingConnections];
+                int k = 0;
+                for (int i = 0; i <  srcLaneIds.Length; ++i) {
+                    if (srcLaneIds[i] == 0)
+                        continue;
+                    LaneConnections[laneConnectionIndex].connectedLaneIds[k++] = srcLaneIds[i];
+                }
+            }
+
+            return ret;
+        }
+
+        /// <summary>
+        /// Removes any lane connections that exist between two given lanes
+        /// </summary>
+        /// <param name="lane1Id"></param>
+        /// <param name="lane2Id"></param>
+        /// <param name="startNode1"></param>
+        /// <returns></returns>
+        private bool RemoveConnectedLane(uint lane1Id, uint lane2Id, bool startNode1) {
+#if DEBUG
+            bool debug = DebugSwitch.LaneConnections.Get();
+            if (debug) {
+                Log._Debug($"LaneConnectionManager.RemoveConnectedLane({lane1Id}, {lane2Id}, {startNode1}) called.");
+            }
+#endif
+            bool lane1Valid = Flags.CheckLane(lane1Id);
+            bool lane2Valid = Flags.CheckLane(lane2Id);
+
+            bool ret = false;
+
+            if (!lane1Valid) {
+                // remove all incoming/outgoing lane connections
+                RemoveConnectedLanes(lane1Id);
+                ret = true;
+            }
+
+            if (!lane2Valid) {
+                // remove all incoming/outgoing lane connections
+                RemoveConnectedLanes(lane2Id);
+                ret = true;
+            }
+
+            if (lane1Valid || lane2Valid) {
+                GetCommonNodeId(
+                    lane1Id,
+                    lane2Id,
+                    startNode1,
+                    out ushort commonNodeId,
+                    out bool startNode2); // TODO refactor
+                if (commonNodeId == 0) {
+                    Log.Warning($"LaneConnectionManager.RemoveConnectedLane({lane1Id}, {lane2Id}, {startNode1}): " +
+                                $"Could not identify common node between lanes {lane1Id} and {lane2Id}");
+                }
+
+                if (RemoveSingleConnectedLane(lane1Id, lane2Id, startNode1)) {
+                    ret = true;
+                }
+
+                if (RemoveSingleConnectedLane(lane2Id, lane1Id, startNode2)) {
+                    ret = true;
+                }
+            }
+
+#if DEBUG
+            if (debug) {
+                Log._Debug($"LaneConnectionManager.RemoveConnectedLane({lane1Id}, {lane2Id}, {startNode1}). ret={ret}");
+            }
+#endif
+            return ret;
+        }
+
+        /// <summary>
+        /// Removes all incoming/outgoing lane connections of the given lane
+        /// </summary>
+        /// <param name="laneId"></param>
+        /// <param name="startNode"></param>
+        private void RemoveConnectedLanes(uint laneId, bool? startNode = null) {
+#if DEBUG
+            bool debug = DebugSwitch.LaneConnections.Get();
+            if (debug) {
+                Log._Debug($"LaneConnectionManager.RemoveConnectedLanes({laneId}, {startNode}) called.");
+            }
+#endif
+            bool laneValid = Flags.CheckLane(laneId);
+            bool clearBothSides = startNode == null || !laneValid;
+#if DEBUG
+            if (debug) {
+                Log._Debug($"LaneConnectionManager.RemoveConnectedLanes({laneId}, {startNode}): laneValid={laneValid}, " +
+                           $"clearBothSides={clearBothSides}");
+            }
+#endif
+            foreach (bool startNode1 in compatibleNodeOrder) {
+                if (startNode.HasValue && startNode1 != startNode.Value) {
+                    continue;
+                }
+
+                int laneConnectionIndex = GetIndex(laneId, startNode1);
+
+                if (LaneConnections[laneConnectionIndex].connectedLaneIds == null) {
+                    continue;
+                }
+
+                for (int i = 0; i < LaneConnections[laneConnectionIndex].connectedLaneIds.Length; ++i) {
+                    uint otherLaneId = LaneConnections[laneConnectionIndex].connectedLaneIds[i];
+                    GetCommonNodeId(
+                        laneId,
+                        otherLaneId,
+                        startNode1,
+                        out ushort commonNodeId,
+                        out bool startNode2); // TODO refactor
+
+                    if (commonNodeId == 0) {
+                        Log.Warning($"LaneConnectionManager.RemoveConnectedLanes({laneId}, {startNode}): Could " +
+                                    $"not identify common node between lanes {laneId} and {otherLaneId}");
+                    }
+
+                    RemoveSingleConnectedLane(otherLaneId, laneId, startNode2);
+                }
+
+                LaneConnections[laneConnectionIndex].connectedLaneIds = null;
+            }
+        }
+
+        /// <summary>
+        /// adds lane connections between two given lanes
+        /// </summary>
+        /// <param name="lane1Id"></param>
+        /// <param name="lane2Id"></param>
+        /// <param name="startNode1"></param>
+        /// <returns></returns>
+        private bool AddConnectedLane(uint lane1Id, uint lane2Id, bool startNode1) {
+            bool lane1Valid = Flags.CheckLane(lane1Id);
+            bool lane2Valid = Flags.CheckLane(lane2Id);
+
+            if (!lane1Valid) {
+                // remove all incoming/outgoing lane connections
+                RemoveConnectedLanes(lane1Id);
+            }
+
+            if (!lane2Valid) {
+                // remove all incoming/outgoing lane connections
+                RemoveConnectedLanes(lane2Id);
+            }
+
+            if (!lane1Valid || !lane2Valid) {
+                return false;
+            }
+
+            GetCommonNodeId(
+                lane1Id,
+                lane2Id,
+                startNode1,
+                out ushort commonNodeId,
+                out bool startNode2); // TODO refactor
+
+            if (commonNodeId != 0) {
+                CreateConnectedLane(lane1Id, lane2Id, startNode1);
+                CreateConnectedLane(lane2Id, lane1Id, startNode2);
+
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Adds a lane connection from lane <paramref name="sourceLaneId"/> to lane <paramref name="targetLaneId"/> at node <paramref name="startNode"/>
+        /// Assumes that both lanes are valid.
+        /// </summary>
+        /// <param name="sourceLaneId"></param>
+        /// <param name="targetLaneId"></param>
+        /// <param name="startNode"></param>
+        private void CreateConnectedLane(uint sourceLaneId,
+                                            uint targetLaneId,
+                                            bool startNode) {
+
+            int laneConnectionIndex = GetIndex(sourceLaneId, startNode);
+
+            int nodeArrayIndex = startNode ? 0 : 1;
+
+            if (LaneConnections[laneConnectionIndex].connectedLaneIds == null) {
+                LaneConnections[laneConnectionIndex].connectedLaneIds = new uint[] { targetLaneId };
+                return;
+            }
+
+            uint[] oldConnections = LaneConnections[laneConnectionIndex].connectedLaneIds;
+            LaneConnections[laneConnectionIndex].connectedLaneIds = new uint[oldConnections.Length + 1];
+            Array.Copy(
+                oldConnections,
+                LaneConnections[laneConnectionIndex].connectedLaneIds,
+                oldConnections.Length);
+            LaneConnections[laneConnectionIndex].connectedLaneIds[oldConnections.Length] = targetLaneId;
+        }
+
+        private void Reset(ref LaneConnection laneConnection) {
+            laneConnection.laneId = 0;
+            laneConnection.connectedLaneIds = null;
+        }
+
+        public override void OnLevelUnloading() {
+            base.OnLevelUnloading();
+
+            for (int i = 0; i < LaneConnections.Length; ++i) {
+                Reset(ref LaneConnections[i]);
+            }
         }
     }
 }
