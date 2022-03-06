@@ -25,5 +25,17 @@ namespace TrafficManager.Util.Extensions {
             return netLane.IsValid()
                 && netLane.m_segment.ToSegment().IsValid();
         }
+
+        public static int FindLaneIndex(this uint laneId) {
+            int index = 0;
+            for (uint segmentLaneId = laneId.ToLane().m_segment.ToSegment().m_lanes;
+                    segmentLaneId != 0;
+                    segmentLaneId = segmentLaneId.ToLane().m_nextLane, index++) {
+
+                if (segmentLaneId == laneId)
+                    return index;
+            }
+            return -1;
+        }
     }
 }

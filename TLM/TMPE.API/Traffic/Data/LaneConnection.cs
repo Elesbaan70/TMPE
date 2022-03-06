@@ -13,10 +13,23 @@ namespace TrafficManager.API.Traffic.Data {
 
         public uint[] connectedLaneIds;
 
+        public LaneConnectionFlags flags;
+
         public LaneConnection(uint laneId, bool startNode) {
             this.laneId = laneId;
             this.startNode = startNode;
             connectedLaneIds = null;
+            flags = LaneConnectionFlags.None;
+        }
+
+        public void Reset() {
+            laneId = 0;
+            connectedLaneIds = null;
+            flags = LaneConnectionFlags.None;
+        }
+
+        public bool IsDefault() {
+            return connectedLaneIds == null && flags == LaneConnectionFlags.None;
         }
 
         public override string ToString() {
@@ -27,7 +40,8 @@ namespace TrafficManager.API.Traffic.Data {
             return $"[LaneConnection {base.ToString()}" +
                     $"\n\tlaneId={laneId}" +
                     $"\n\tstartNode={startNode}" +
-                    $"\n\tconnectedLaneIds={connectedLanes}";
+                    $"\n\tconnectedLaneIds={connectedLanes}" +
+                    $"\n\tflags={flags}";
         }
 
         public bool Equals(LaneConnection other) {
