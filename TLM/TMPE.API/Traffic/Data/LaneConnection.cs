@@ -5,7 +5,7 @@ using System.Text;
 using TrafficManager.API.Traffic.Enums;
 
 namespace TrafficManager.API.Traffic.Data {
-    public struct LaneConnection : IEquatable<LaneConnection> {
+    public class LaneConnection : IEquatable<LaneConnection> {
 
         public uint laneId;
 
@@ -18,12 +18,6 @@ namespace TrafficManager.API.Traffic.Data {
         public LaneConnection(uint laneId, bool startNode) {
             this.laneId = laneId;
             this.startNode = startNode;
-            connectedLaneIds = null;
-            flags = LaneConnectionFlags.None;
-        }
-
-        public void Reset() {
-            laneId = 0;
             connectedLaneIds = null;
             flags = LaneConnectionFlags.None;
         }

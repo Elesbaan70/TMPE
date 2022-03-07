@@ -46,17 +46,13 @@ namespace TrafficManager.Manager.Impl {
 
         private LaneConnectionManager() {
             LaneConnections = new LaneConnection[NetManager.MAX_LANE_COUNT * 2];
-            for (uint i = 0; i < NetManager.MAX_LANE_COUNT; ++i) {
-                LaneConnections[GetIndex(i, true)] = new LaneConnection((ushort)i, true);
-                LaneConnections[GetIndex(i, false)] = new LaneConnection((ushort)i, false);
-            }
         }
 
-        public int GetIndex(uint laneId, bool startNode) {
+        private int GetIndex(uint laneId, bool startNode) {
             return (int)(laneId * 2) + (startNode ? 0 : 1);
         }
 
-        public int GetIndex(uint laneId, ushort nodeId) {
+        private int GetIndex(uint laneId, ushort nodeId) {
             bool found = false;
             bool startNode = false;
 
@@ -80,11 +76,16 @@ namespace TrafficManager.Manager.Impl {
 
         public static LaneConnectionManager Instance { get; }
 
-        /// <summary>
-        /// All additional data for segment ends
-        /// </summary>
-        public LaneConnection[] LaneConnections { get; }
+        private LaneConnection[] LaneConnections { get; }
 
+        public LaneConnection this[uint laneId, bool startNode] {
+            get => LaneConnections[GetIndex(laneId, startNode)];
+            private set => LaneConnections[GetIndex(laneId, startNode)] = value;
+        }
+
+        private LaneConnection GetOrCreate(uint laneId, bool startNode) {
+            return this[laneId, startNode] ??= new LaneConnection(laneId, startNode);
+        }
         protected override void InternalPrintDebugInfo() {
             base.InternalPrintDebugInfo();
             Log._Debug($"Lane Connection data:");
@@ -97,23 +98,30 @@ namespace TrafficManager.Manager.Impl {
                     continue;
                 }
 
-                var startNodeConnection = LaneConnections[GetIndex(i, true)];
-                var endNodeConnection = LaneConnections[GetIndex(i, false)];
+                var startNodeConnection = this[i, true];
+                var endNodeConnection = this[i, false];
 
-                if (!startNodeConnection.IsDefault())
+                if (startNodeConnection?.IsDefault() == false)
                     Log._Debug($"LaneConnection {i} on segment {segmentId} @ start node: {startNodeConnection}");
 
-                if (!endNodeConnection.IsDefault())
+                if (endNodeConnection?.IsDefault() == false)
                     Log._Debug($"LaneConnection {i} on segment {segmentId} @ end node: {endNodeConnection}");
             }
         }
 
-        private bool AreLanesConnected(uint sourceLaneId, uint targetLaneId, bool sourceStartNode, bool ignoreEnabled) {
-            if (!(Options.laneConnectorEnabled || ignoreEnabled)) {
+        private bool AreLanesConnected(uint sourceLaneId, uint targetLaneId, bool sourceStartNode, bool ignoreEnabled)
+        {
+            if (!(Options.laneConnectorEnabled || ignoreEnabled))
+            {
                 return true;
             }
 
-            uint[] connectedLanes = LaneConnections[GetIndex(sourceLaneId, sourceStartNode)].connectedLaneIds;
+            if (targetLaneId == 0)
+            {
+                return false;
+            }
+
+            uint[] connectedLanes = this[sourceLaneId, sourceStartNode]?.connectedLaneIds;
 
             return connectedLanes?.Any(laneId => laneId == targetLaneId) == true;
         }
@@ -152,7 +160,7 @@ namespace TrafficManager.Manager.Impl {
                 return false;
             }
 
-            return LaneConnections[GetIndex(sourceLaneId, startNode)].connectedLaneIds != null;
+            return this[sourceLaneId, startNode]?.connectedLaneIds != null;
         }
 
         /// <summary>
@@ -228,9 +236,7 @@ namespace TrafficManager.Manager.Impl {
                 return 0;
             }
 
-            int laneConnectionIndex = GetIndex(sourceLaneId, startNode);
-
-            return LaneConnections[laneConnectionIndex].connectedLaneIds?.Length ?? 0;
+            return this[sourceLaneId, startNode]?.connectedLaneIds?.Length ?? 0;
         }
 
         /// <summary>
@@ -243,7 +249,7 @@ namespace TrafficManager.Manager.Impl {
                 return null;
             }
 
-            return LaneConnections[GetIndex(laneId, startNode)].connectedLaneIds;
+            return this[laneId, startNode]?.connectedLaneIds;
         }
 
         /// <summary>
@@ -380,9 +386,7 @@ namespace TrafficManager.Manager.Impl {
                            $"{startNode}) called.");
             }
 
-            int laneConnectionIndex = GetIndex(laneId, startNode);
-
-            if (LaneConnections[laneConnectionIndex].connectedLaneIds == null) {
+            if (this[laneId, startNode]?.connectedLaneIds == null) {
                 return;
             }
 
@@ -612,7 +616,7 @@ namespace TrafficManager.Manager.Impl {
 
         private void RecalculateFlags(uint laneId) {
             foreach (var startNode in compatibleNodeOrder) {
-                if (LaneConnections[GetIndex(laneId, startNode)].connectedLaneIds != null) {
+                if (this[laneId, startNode]?.connectedLaneIds != null) {
                     var nodeId = laneId.ToLane().m_segment.ToSegment().GetNodeId(startNode);
                     RecalculateArrowsAndDisplacementFlags(laneId, nodeId, startNode, true);
                 }
@@ -627,7 +631,7 @@ namespace TrafficManager.Manager.Impl {
         /// <param name="forceFlagCalculation">Forces flag calculation even when <see cref="Options.laneConnectorEnabled"/> is false</param>
         private void RecalculateArrowsAndDisplacementFlags(uint laneId, ushort nodeId, bool startNode, bool forceFlagCalculation = false) {
 #if DEBUG
-            bool logLaneConnections = DebugSwitch.LaneConnections.Get();
+            bool logLaneConnections = true; // DebugSwitch.LaneConnections.Get();
 #else
             const bool logLaneConnections = false;
 #endif
@@ -649,8 +653,8 @@ namespace TrafficManager.Manager.Impl {
                 return;
             }
 
-            int laneConnectionIndex = GetIndex(laneId, startNode);
-            if (LaneConnections[laneConnectionIndex].connectedLaneIds == null) {
+            var laneConnection = this[laneId, startNode];
+            if (laneConnection?.connectedLaneIds == null) {
                 if (logLaneConnections) {
                     Log._Debug($"LaneConnectionManager.RecalculateArrowsAndDisplacementFlags({laneId}, {nodeId}, {startNode}, {forceFlagCalculation}): " +
                                $"lane {laneId} does not have outgoing connections");
@@ -696,8 +700,7 @@ namespace TrafficManager.Manager.Impl {
                 return;
             }
 
-            ref var flags = ref LaneConnections[laneConnectionIndex].flags;
-            flags &= ~LaneConnectionFlags.Displacement;
+            laneConnection.flags &= ~LaneConnectionFlags.Displacement;
             bool isDisplacedLane = segmentId.ToSegment().Info.IsDisplacedLane(laneId.FindLaneIndex());
             var farDirection = LHT ? ArrowDirection.Right : ArrowDirection.Left;
 
@@ -803,21 +806,21 @@ namespace TrafficManager.Manager.Impl {
 
                                 if (dir == farDirection) {
                                     if (isDisplacedLane)
-                                        flags |= LaneConnectionFlags.TurnOutOfDisplaced;
+                                        laneConnection.flags |= LaneConnectionFlags.TurnOutOfDisplaced;
 
                                     if (isOtherDisplacedLane)
-                                        flags |= LaneConnectionFlags.TurnIntoDisplaced;
+                                        laneConnection.flags |= LaneConnectionFlags.TurnIntoDisplaced;
 
                                 } else if (dir == ArrowDirection.Forward) {
 
                                     if (isDisplacedLane) {
                                         if (isOtherDisplacedLane) {
-                                            flags |= LaneConnectionFlags.ForwardDisplaced;
+                                            laneConnection.flags |= LaneConnectionFlags.ForwardDisplaced;
                                         } else {
-                                            flags |= LHT ? LaneConnectionFlags.CrossLeft : LaneConnectionFlags.CrossRight;
+                                            laneConnection.flags |= LHT ? LaneConnectionFlags.CrossLeft : LaneConnectionFlags.CrossRight;
                                         }
                                     } else if (isOtherDisplacedLane) {
-                                        flags |= LHT ? LaneConnectionFlags.CrossRight : LaneConnectionFlags.CrossLeft;
+                                        laneConnection.flags |= LHT ? LaneConnectionFlags.CrossRight : LaneConnectionFlags.CrossLeft;
                                     }
                                 }
 
@@ -880,8 +883,9 @@ namespace TrafficManager.Manager.Impl {
             }
 
             if (logLaneConnections) {
+                var displacementFlags = laneConnection.flags & LaneConnectionFlags.Displacement;
                 Log._Debug($"LaneConnectionManager.RecalculateArrowsAndDisplacementFlags({laneId}, {nodeId}, {startNode}, {forceFlagCalculation}): " +
-                           (flags == LaneConnectionFlags.None ? "displacement flags cleared" : $"displacement flags set to {flags & LaneConnectionFlags.Displacement}"));
+                           (displacementFlags == LaneConnectionFlags.None ? "displacement flags cleared" : $"displacement flags set to {displacementFlags}"));
             }
 
             if (Options.laneConnectorEnabled) {
@@ -946,7 +950,7 @@ namespace TrafficManager.Manager.Impl {
                     if (Flags.CheckLane(i)) {
                         foreach (bool startNode in compatibleNodeOrder) {
 
-                            uint[] connectedLaneIds = LaneConnections[GetIndex(i, startNode)].connectedLaneIds;
+                            uint[] connectedLaneIds = this[i, startNode]?.connectedLaneIds;
 
                             if (connectedLaneIds == null) {
                                 continue;
@@ -1006,12 +1010,10 @@ namespace TrafficManager.Manager.Impl {
             Log._Debug(
                 $"LaneConnectionManager.RemoveSingleConnectedLane({sourceLaneId}, {targetLaneId}, {startNode}) called.");
 #endif
-            var laneConnectionIndex = GetIndex(sourceLaneId, startNode);
-
-            if (LaneConnections[laneConnectionIndex].connectedLaneIds == null)
+            var laneConnection = this[sourceLaneId, startNode];
+            uint[] srcLaneIds = laneConnection?.connectedLaneIds;
+            if (srcLaneIds == null)
                 return false;
-
-            uint[] srcLaneIds = LaneConnections[laneConnectionIndex].connectedLaneIds;
 
             bool ret = false;
             int remainingConnections = 0;
@@ -1025,17 +1027,17 @@ namespace TrafficManager.Manager.Impl {
             }
 
             if (remainingConnections <= 0) {
-                LaneConnections[laneConnectionIndex].connectedLaneIds = null;
+                laneConnection.connectedLaneIds = null;
                 return ret;
             }
 
             if (remainingConnections != srcLaneIds.Length) {
-                LaneConnections[laneConnectionIndex].connectedLaneIds = new uint[remainingConnections];
+                laneConnection.connectedLaneIds = new uint[remainingConnections];
                 int k = 0;
                 for (int i = 0; i < srcLaneIds.Length; ++i) {
                     if (srcLaneIds[i] == 0)
                         continue;
-                    LaneConnections[laneConnectionIndex].connectedLaneIds[k++] = srcLaneIds[i];
+                    laneConnection.connectedLaneIds[k++] = srcLaneIds[i];
                 }
             }
 
@@ -1127,14 +1129,14 @@ namespace TrafficManager.Manager.Impl {
                     continue;
                 }
 
-                int laneConnectionIndex = GetIndex(laneId, startNode1);
+                var laneConnection = this[laneId, startNode1];
 
-                if (LaneConnections[laneConnectionIndex].connectedLaneIds == null) {
+                if (laneConnection?.connectedLaneIds == null) {
                     continue;
                 }
 
-                for (int i = 0; i < LaneConnections[laneConnectionIndex].connectedLaneIds.Length; ++i) {
-                    uint otherLaneId = LaneConnections[laneConnectionIndex].connectedLaneIds[i];
+                for (int i = 0; i < laneConnection.connectedLaneIds.Length; ++i) {
+                    uint otherLaneId = laneConnection.connectedLaneIds[i];
                     GetCommonNodeId(
                         laneId,
                         otherLaneId,
@@ -1150,7 +1152,7 @@ namespace TrafficManager.Manager.Impl {
                     RemoveSingleConnectedLane(otherLaneId, laneId, startNode2);
                 }
 
-                LaneConnections[laneConnectionIndex].connectedLaneIds = null;
+                laneConnection.connectedLaneIds = null;
             }
         }
 
@@ -1207,30 +1209,27 @@ namespace TrafficManager.Manager.Impl {
                                             uint targetLaneId,
                                             bool startNode) {
 
-            int laneConnectionIndex = GetIndex(sourceLaneId, startNode);
+            var laneConnection = GetOrCreate(sourceLaneId, startNode);
 
-            if (LaneConnections[laneConnectionIndex].connectedLaneIds == null) {
-                LaneConnections[laneConnectionIndex].connectedLaneIds = new uint[] { targetLaneId };
+            if (laneConnection.connectedLaneIds == null) {
+                laneConnection.connectedLaneIds = new uint[] { targetLaneId };
                 return;
             }
 
-            uint[] oldConnections = LaneConnections[laneConnectionIndex].connectedLaneIds;
-            LaneConnections[laneConnectionIndex].connectedLaneIds = new uint[oldConnections.Length + 1];
+            uint[] oldConnections = laneConnection.connectedLaneIds;
+            laneConnection.connectedLaneIds = new uint[oldConnections.Length + 1];
             Array.Copy(
                 oldConnections,
-                LaneConnections[laneConnectionIndex].connectedLaneIds,
+                laneConnection.connectedLaneIds,
                 oldConnections.Length);
-            LaneConnections[laneConnectionIndex].connectedLaneIds[oldConnections.Length] = targetLaneId;
+            laneConnection.connectedLaneIds[oldConnections.Length] = targetLaneId;
         }
-
-        private void Reset(ref LaneConnection laneConnection) => laneConnection.Reset();
 
         public override void OnLevelUnloading() {
             base.OnLevelUnloading();
 
-            for (int i = 0; i < LaneConnections.Length; ++i) {
-                Reset(ref LaneConnections[i]);
-            }
+            for (int i = 0; i < LaneConnections.Length; ++i)
+                LaneConnections[i] = null;
         }
     }
 }
