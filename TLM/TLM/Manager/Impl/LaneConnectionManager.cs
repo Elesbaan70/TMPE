@@ -45,7 +45,7 @@ namespace TrafficManager.Manager.Impl {
 
         public static LaneConnectionManager Instance { get; }
 
-        public event Action<uint, bool> ConnectionsChanged;
+        public event ILaneConnectionManager.ConnectionsChangedEventHandler ConnectionsChanged;
 
         protected override void InternalPrintDebugInfo() {
             base.InternalPrintDebugInfo();

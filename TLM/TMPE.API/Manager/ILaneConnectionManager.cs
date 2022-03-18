@@ -1,6 +1,12 @@
 namespace TrafficManager.API.Manager {
+
     public interface ILaneConnectionManager {
+
         // TODO define me!
+
+        public delegate void ConnectionsChangedEventHandler(uint laneId, bool startNode);
+
+        public event ConnectionsChangedEventHandler ConnectionsChanged;
 
         public NetInfo.LaneType LaneTypes { get; }
 
