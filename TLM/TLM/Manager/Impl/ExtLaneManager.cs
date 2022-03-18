@@ -21,7 +21,7 @@ namespace TrafficManager.Manager.Impl {
         private ExtLaneManager() {
             lanes = new ExtLane[NetManager.MAX_LANE_COUNT];
 
-            for (int i = 0; i < lanes.Length; i++) {
+            for (int i = 0; i < NetManager.MAX_LANE_COUNT; i++) {
                 lanes[i] = new ExtLane((uint)i);
             }
 
@@ -40,7 +40,7 @@ namespace TrafficManager.Manager.Impl {
         public override void OnLevelUnloading() {
             base.OnLevelUnloading();
 
-            for (uint laneId = 1; laneId < lanes.Length; ++laneId) {
+            for (uint laneId = 1; laneId < NetManager.MAX_LANE_COUNT; ++laneId) {
                 lanes[laneId].Reset(laneId);
             }
         }
@@ -49,7 +49,7 @@ namespace TrafficManager.Manager.Impl {
             base.InternalPrintDebugInfo();
             Log._Debug($"Extended lane data:");
 
-            for (uint laneId = 1; laneId < lanes.Length; ++laneId) {
+            for (uint laneId = 1; laneId < NetManager.MAX_LANE_COUNT; ++laneId) {
                 ref ExtLane lane = ref lanes[laneId];
                 if (lane.IsValidWithSegment(laneId))
                     Log._Debug(lane.ToString(laneId));

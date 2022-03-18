@@ -45,6 +45,8 @@ namespace TrafficManager.Manager.Impl {
 
         public static LaneConnectionManager Instance { get; }
 
+        public event Action<uint, bool> ConnectionsChanged;
+
         protected override void InternalPrintDebugInfo() {
             base.InternalPrintDebugInfo();
             Log.NotImpl("InternalPrintDebugInfo for LaneConnectionManager");
@@ -249,6 +251,8 @@ namespace TrafficManager.Manager.Impl {
 
             RecalculateLaneArrows(laneId1, commonNodeId, startNode1);
             RecalculateLaneArrows(laneId2, commonNodeId, startNode2);
+            ConnectionsChanged?.Invoke(laneId1, startNode1);
+            ConnectionsChanged?.Invoke(laneId2, startNode2);
 
             ref NetNode commonNode = ref commonNodeId.ToNode();
             RoutingManager.Instance.RequestNodeRecalculation(ref commonNode);
@@ -365,6 +369,7 @@ namespace TrafficManager.Manager.Impl {
             }*/
 
             Flags.RemoveLaneConnections(laneId, startNode);
+            ConnectionsChanged?.Invoke(laneId, startNode);
 
             if (recalcAndPublish) {
                 ushort segment = laneId.ToLane().m_segment;
@@ -416,6 +421,8 @@ namespace TrafficManager.Manager.Impl {
 
             RecalculateLaneArrows(sourceLaneId, commonNodeId, sourceStartNode);
             RecalculateLaneArrows(targetLaneId, commonNodeId, targetStartNode);
+            ConnectionsChanged?.Invoke(sourceLaneId, sourceStartNode);
+            ConnectionsChanged?.Invoke(targetLaneId, targetStartNode);
 
             NetManager netManager = Singleton<NetManager>.instance;
 
