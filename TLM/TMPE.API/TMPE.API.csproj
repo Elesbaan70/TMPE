@@ -153,7 +153,7 @@
     <Compile Include="Traffic\Enums\FlowWaitCalcMode.cs" />
     <Compile Include="Traffic\Enums\GeometryCalculationMode.cs" />
     <Compile Include="Traffic\Enums\LaneArrows.cs" />
-    <Compile Include="Traffic\Enums\LaneConfigurationFlags.cs" />
+    <Compile Include="Traffic\Enums\LaneEndFlags.cs" />
     <Compile Include="Traffic\Enums\LaneEndTransitionType.cs" />
     <Compile Include="Traffic\Enums\LightMode.cs" />
     <Compile Include="Traffic\Enums\ParkedCarApproachState.cs" />

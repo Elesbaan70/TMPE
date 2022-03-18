@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 
 namespace TrafficManager.API.Traffic.Enums {
-    public enum LaneConfigurationFlags {
+    public enum LaneEndFlags {
         None = 0,
         CrossLeft = 1,
         CrossRight = 1 << 1,
@@ -12,6 +12,6 @@ namespace TrafficManager.API.Traffic.Enums {
         TurnIntoDisplaced = 1 << 3,
         ForwardDisplaced = 1 << 4,
 
-        Computed = CrossLeft | CrossRight | TurnOutOfDisplaced | TurnIntoDisplaced | ForwardDisplaced,
+        Displacement = CrossLeft | CrossRight | TurnOutOfDisplaced | TurnIntoDisplaced | ForwardDisplaced,
     }
 }

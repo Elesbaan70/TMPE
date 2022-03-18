@@ -25,7 +25,7 @@ namespace TrafficManager.UI.Textures {
         public IDictionary<ExtVehicleType, IDictionary<bool, Texture2D>> VehicleRestrictionTextures;
         public IDictionary<ExtVehicleType, Texture2D> VehicleInfoSignTextures;
 
-        public IDictionary<LaneConfigurationFlags, Texture2D> LaneConfigurationInfoSignTextures;
+        public IDictionary<LaneEndFlags, Texture2D> LaneConfigurationInfoSignTextures;
 
         [Obsolete("These are now available via RoadSignThemes.ActiveTheme.Parking(bool)")]
         public IDictionary<bool, Texture2D> ParkingRestrictionTextures;
@@ -108,12 +108,12 @@ namespace TrafficManager.UI.Textures {
 
             string direction = Shortcuts.LHT ? "lht" : "rht";
 
-            LaneConfigurationInfoSignTextures = new Dictionary<LaneConfigurationFlags, Texture2D> {
-                [LaneConfigurationFlags.CrossLeft] = LoadDllResource("RoadUI.crossleft_infosign.png", signSize),
-                [LaneConfigurationFlags.CrossRight] = LoadDllResource("RoadUI.crossright_infosign.png", signSize),
-                [LaneConfigurationFlags.TurnOutOfDisplaced] = LoadDllResource($"RoadUI.turnoutofdisplaced_{direction}_infosign.png", signSize),
-                [LaneConfigurationFlags.TurnIntoDisplaced] = LoadDllResource($"RoadUI.turnintodisplaced_{direction}_infosign.png", signSize),
-                [LaneConfigurationFlags.ForwardDisplaced] = LoadDllResource($"RoadUI.forwarddisplaced_{direction}_infosign.png", signSize),
+            LaneConfigurationInfoSignTextures = new Dictionary<LaneEndFlags, Texture2D> {
+                [LaneEndFlags.CrossLeft] = LoadDllResource("RoadUI.crossleft_infosign.png", signSize),
+                [LaneEndFlags.CrossRight] = LoadDllResource("RoadUI.crossright_infosign.png", signSize),
+                [LaneEndFlags.TurnOutOfDisplaced] = LoadDllResource($"RoadUI.turnoutofdisplaced_{direction}_infosign.png", signSize),
+                [LaneEndFlags.TurnIntoDisplaced] = LoadDllResource($"RoadUI.turnintodisplaced_{direction}_infosign.png", signSize),
+                [LaneEndFlags.ForwardDisplaced] = LoadDllResource($"RoadUI.forwarddisplaced_{direction}_infosign.png", signSize),
             };
 
             base.OnLevelLoading();
