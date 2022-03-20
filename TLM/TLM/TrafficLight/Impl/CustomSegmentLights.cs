@@ -577,6 +577,7 @@ namespace TrafficManager.TrafficLight.Impl {
 
         // TODO improve & remove
         public void Housekeeping(bool mayDelete, bool calculateAutoPedLight) {
+            // TODO lane-grouping - This will need to account for new properties in SegmentLightGroup, but this can't be coded reliably without a use case to test it on
 #if DEBUGHK
             bool logHouseKeeping = DebugSwitch.TimedTrafficLights.Get()
                                    && DebugSettings.NodeId == NodeId;

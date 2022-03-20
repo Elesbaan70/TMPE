@@ -14,6 +14,7 @@ namespace TrafficManager.UI.SubTools {
     using TrafficManager.Util.Extensions;
     using UnityEngine;
 
+    // TODO lane-grouping - new CustomSegmentLight properties and associated infosigns
     public class ManualTrafficLightsTool
         : LegacySubTool,
           UI.MainMenu.IOnscreenDisplayProvider
