@@ -3,7 +3,7 @@ namespace TrafficManager.TrafficLight.Impl {
     using System;
     using TrafficManager.API.Traffic.Enums;
 
-    public struct TrafficLightSimulation {
+    internal struct TrafficLightSimulation {
         /// <summary>
         /// Timed traffic light by node id
         /// </summary>

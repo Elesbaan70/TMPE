@@ -16,7 +16,7 @@ namespace TrafficManager.TrafficLight.Impl {
     using TrafficManager.Util.Extensions;
 
     // TODO define TimedTrafficLights per node group, not per individual nodes
-    public class TimedTrafficLights {
+    internal class TimedTrafficLights {
         public TimedTrafficLights(ushort nodeId, IEnumerable<ushort> nodeGroup) {
             NodeId = nodeId;
             NodeGroup = new List<ushort>(nodeGroup);
@@ -818,7 +818,7 @@ namespace TrafficManager.TrafficLight.Impl {
 
         public long CheckNextChange(ushort segmentId,
                                     bool startNode,
-                                    API.Traffic.Enums.ExtVehicleType vehicleType,
+                                    SegmentLightGroup group,
                                     int lightType)
         {
             int curStep = CurrentStep;
@@ -837,7 +837,7 @@ namespace TrafficManager.TrafficLight.Impl {
                 return 99;
             }
 
-            CustomSegmentLight segmentLight = segmentLights.GetCustomLight(vehicleType);
+            CustomSegmentLight segmentLight = segmentLights.GetCustomLight(group);
             if (segmentLight == null) {
                 Log._Debug($"CheckNextChange: No segment light at node {NodeId}, segment {segmentId}");
                 return 99;
@@ -872,7 +872,7 @@ namespace TrafficManager.TrafficLight.Impl {
                 }
 
                 RoadBaseAI.TrafficLightState light =
-                    Steps[nextStep].GetLightState(segmentId, vehicleType, lightType);
+                    Steps[nextStep].GetLightState(segmentId, group, lightType);
 
                 if (light != currentState) {
                     break;
@@ -1079,7 +1079,7 @@ namespace TrafficManager.TrafficLight.Impl {
         }
 
         public void ChangeLightMode(ushort segmentId,
-                                    API.Traffic.Enums.ExtVehicleType vehicleType,
+                                    SegmentLightGroup group,
                                     LightMode mode) {
 #if DEBUG
             bool logTrafficLights = DebugSwitch.TimedTrafficLights.Get()
@@ -1104,13 +1104,13 @@ namespace TrafficManager.TrafficLight.Impl {
             }
 
             foreach (TimedTrafficLightsStep step in Steps) {
-                step.ChangeLightMode(segmentId, vehicleType, mode);
+                step.ChangeLightMode(segmentId, group, mode);
             }
 
             CustomSegmentLightsManager.Instance.SetLightMode(
                 segmentId,
                 (bool)startNode,
-                vehicleType,
+                group,
                 mode);
         }
 

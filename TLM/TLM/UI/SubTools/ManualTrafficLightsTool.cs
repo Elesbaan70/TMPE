@@ -192,9 +192,9 @@ namespace TrafficManager.UI.SubTools {
 
                     int lightOffset = -1;
 
-                    foreach (ExtVehicleType vehicleType in segmentLights.VehicleTypes) {
+                    foreach (SegmentLightGroup group in segmentLights.Groups) {
                         ++lightOffset;
-                        CustomSegmentLight segmentLight = segmentLights.GetCustomLight(vehicleType);
+                        CustomSegmentLight segmentLight = segmentLights.GetCustomLight(group);
 
                         Vector3 offsetScreenPos = screenPos;
                         offsetScreenPos.y -= (lightHeight + (10f * zoom)) * lightOffset;
@@ -225,7 +225,7 @@ namespace TrafficManager.UI.SubTools {
                             segmentLights,
                             hoveredSegment);
 
-                        if (vehicleType != ExtVehicleType.None) {
+                        if (group != default) {
                             // Info sign
                             float infoWidth = 56.125f * zoom;
                             float infoHeight = 51.375f * zoom;
@@ -233,7 +233,7 @@ namespace TrafficManager.UI.SubTools {
                             int numInfos = 0;
 
                             for (int k = 0; k < TrafficManagerTool.InfoSignsToDisplay.Length; ++k) {
-                                if ((TrafficManagerTool.InfoSignsToDisplay[k] & vehicleType) ==
+                                if ((TrafficManagerTool.InfoSignsToDisplay[k] & group.VehicleType) ==
                                     ExtVehicleType.None) {
                                     continue;
                                 }

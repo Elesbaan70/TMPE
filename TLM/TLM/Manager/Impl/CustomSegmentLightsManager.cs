@@ -13,7 +13,7 @@ namespace TrafficManager.Manager.Impl {
     /// <summary>
     /// Manages the states of all custom traffic lights on the map
     /// </summary>
-    public class CustomSegmentLightsManager
+    internal  class CustomSegmentLightsManager
         : AbstractGeometryObservingManager,
           ITrafficLightContainer,
           ICustomSegmentLightsManager
@@ -273,21 +273,21 @@ namespace TrafficManager.Manager.Impl {
 
         public void SetLightMode(ushort segmentId,
                                  bool startNode,
-                                 ExtVehicleType vehicleType,
+                                 SegmentLightGroup group,
                                  LightMode mode) {
             CustomSegmentLights liveLights = GetSegmentLights(segmentId, startNode);
             if (liveLights == null) {
                 Log.Warning(
                     $"CustomSegmentLightsManager.SetLightMode({segmentId}, {startNode}, " +
-                    $"{vehicleType}, {mode}): Could not retrieve segment lights.");
+                    $"{group}, {mode}): Could not retrieve segment lights.");
                 return;
             }
 
-            CustomSegmentLight liveLight = liveLights.GetCustomLight(vehicleType);
+            CustomSegmentLight liveLight = liveLights.GetCustomLight(group);
             if (liveLight == null) {
                 Log.Error(
                     $"CustomSegmentLightsManager.SetLightMode: Cannot change light mode on seg. " +
-                    $"{segmentId} @ {startNode} for vehicle type {vehicleType} to {mode}: Vehicle light not found");
+                    $"{segmentId} @ {startNode} for vehicle type {group} to {mode}: Vehicle light not found");
                 return;
             }
 
@@ -305,11 +305,11 @@ namespace TrafficManager.Manager.Impl {
                 return false;
             }
 
-            foreach (KeyValuePair<ExtVehicleType, CustomSegmentLight> e in sourceLights.CustomLights) {
-                ExtVehicleType vehicleType = e.Key;
+            foreach (KeyValuePair<SegmentLightGroup, CustomSegmentLight> e in sourceLights.CustomLights) {
+                SegmentLightGroup group = e.Key;
                 CustomSegmentLight targetLight = e.Value;
 
-                if (otherLights.CustomLights.TryGetValue(vehicleType, out CustomSegmentLight sourceLight)) {
+                if (otherLights.CustomLights.TryGetValue(group, out CustomSegmentLight sourceLight)) {
                     targetLight.CurrentMode = sourceLight.CurrentMode;
                 }
             }

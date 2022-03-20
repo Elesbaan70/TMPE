@@ -18,7 +18,7 @@ namespace TrafficManager.TrafficLight.Impl {
     /// <summary>
     /// Represents the set of custom traffic lights located at a node
     /// </summary>
-    public class CustomSegmentLights
+    internal class CustomSegmentLights
         : SegmentEndId
     {
         // private static readonly ExtVehicleType[] SINGLE_LANE_VEHICLETYPES
@@ -26,6 +26,7 @@ namespace TrafficManager.TrafficLight.Impl {
         // ExtVehicleType.CargoTruck, ExtVehicleType.RoadPublicTransport
         // | ExtVehicleType.Service, ExtVehicleType.RailVehicle };
         public const ExtVehicleType DEFAULT_MAIN_VEHICLETYPE = ExtVehicleType.None;
+        internal static readonly SegmentLightGroup defaultGroup = new SegmentLightGroup(DEFAULT_MAIN_VEHICLETYPE);
 
         [Obsolete]
         internal CustomSegmentLights(ITrafficLightContainer lightsContainer,
@@ -71,18 +72,18 @@ namespace TrafficManager.TrafficLight.Impl {
         // TODO improve & remove
         public bool InvalidPedestrianLight { get; set; } = false;
 
-        public IDictionary<ExtVehicleType, CustomSegmentLight> CustomLights {
+        public IDictionary<SegmentLightGroup, CustomSegmentLight> CustomLights {
             get;
-        } = new Dictionary<ExtVehicleType, CustomSegmentLight>();
+        } = new Dictionary<SegmentLightGroup, CustomSegmentLight>();
 
         // TODO replace collection
-        public LinkedList<ExtVehicleType> VehicleTypes {
+        public LinkedList<SegmentLightGroup> Groups {
             get; private set;
-        } = new LinkedList<ExtVehicleType>();
+        } = new LinkedList<SegmentLightGroup>();
 
-        public ExtVehicleType?[] VehicleTypeByLaneIndex {
+        public SegmentLightGroup?[] GroupsByLaneIndex {
             get; private set;
-        } = new ExtVehicleType?[0];
+        } = new SegmentLightGroup?[0];
 
         /// <summary>
         /// Vehicles types that have their own traffic light
@@ -140,7 +141,7 @@ namespace TrafficManager.TrafficLight.Impl {
 
         protected CustomSegmentLight MainSegmentLight {
             get {
-                CustomLights.TryGetValue(mainVehicleType, out CustomSegmentLight res);
+                CustomLights.TryGetValue(new SegmentLightGroup(mainVehicleType), out CustomSegmentLight res);
                 return res;
             }
         }
@@ -169,8 +170,8 @@ namespace TrafficManager.TrafficLight.Impl {
                 LastChangeFrame,
                 InvalidPedestrianLight,
                 CustomLights,
-                VehicleTypes.CollectionToString(),
-                VehicleTypeByLaneIndex.ArrayToString(),
+                Groups.CollectionToString(),
+                GroupsByLaneIndex.ArrayToString(),
                 SeparateVehicleTypes,
                 AutoPedestrianLightState,
                 PedestrianLightState,
@@ -289,13 +290,13 @@ namespace TrafficManager.TrafficLight.Impl {
                 false,
                 false);
 
-            foreach (KeyValuePair<ExtVehicleType, CustomSegmentLight> e in CustomLights) {
+            foreach (KeyValuePair<SegmentLightGroup, CustomSegmentLight> e in CustomLights) {
                 clone.CustomLights.Add(e.Key, (CustomSegmentLight)e.Value.Clone());
             }
 
             clone.InternalPedestrianLightState = InternalPedestrianLightState;
             clone.manualPedestrianMode = manualPedestrianMode;
-            clone.VehicleTypes = new LinkedList<ExtVehicleType>(VehicleTypes);
+            clone.Groups = new LinkedList<SegmentLightGroup>(Groups);
             clone.LastChangeFrame = LastChangeFrame;
             clone.mainVehicleType = mainVehicleType;
             clone.AutoPedestrianLightState = AutoPedestrianLightState;
@@ -308,7 +309,7 @@ namespace TrafficManager.TrafficLight.Impl {
         }
 
         public CustomSegmentLight GetCustomLight(byte laneIndex) {
-            if (laneIndex >= VehicleTypeByLaneIndex.Length) {
+            if (laneIndex >= GroupsByLaneIndex.Length) {
 #if DEBUGGET
                 Log._Debug($"CustomSegmentLights.GetCustomLight({laneIndex}): No vehicle type "+
                 $"found for lane index");
@@ -316,43 +317,43 @@ namespace TrafficManager.TrafficLight.Impl {
                 return MainSegmentLight;
             }
 
-            ExtVehicleType? vehicleType = VehicleTypeByLaneIndex[laneIndex];
+            SegmentLightGroup? group = GroupsByLaneIndex[laneIndex];
 
-            if (vehicleType == null) {
+            if (group == null) {
 #if DEBUGGET
-                Log._Debug($"CustomSegmentLights.GetCustomLight({laneIndex}): No vehicle type found "+
+                Log._Debug($"CustomSegmentLights.GetCustomLight({laneIndex}): No group found "+
                 $"for lane index: lane is invalid");
 #endif
                 return MainSegmentLight;
             }
 
 #if DEBUGGET
-            Log._Debug($"CustomSegmentLights.GetCustomLight({laneIndex}): Vehicle type is {vehicleType}");
+            Log._Debug($"CustomSegmentLights.GetCustomLight({laneIndex}): Group is {group}");
 #endif
 
-            if (!CustomLights.TryGetValue((ExtVehicleType)vehicleType, out CustomSegmentLight light)) {
+            if (!CustomLights.TryGetValue((SegmentLightGroup)group, out CustomSegmentLight light)) {
 #if DEBUGGET
                 Log._Debug($"CustomSegmentLights.GetCustomLight({laneIndex}): No custom light "+
-                $"found for vehicle type {vehicleType}");
+                $"found for group {group}");
 #endif
                 return MainSegmentLight;
             }
 #if DEBUGGET
             Log._Debug($"CustomSegmentLights.GetCustomLight({laneIndex}): Returning custom light "+
-            $"for vehicle type {vehicleType}");
+            $"for group {group}");
 #endif
             return light;
         }
 
-        public CustomSegmentLight GetCustomLight(ExtVehicleType vehicleType) {
-            if (!CustomLights.TryGetValue(vehicleType, out CustomSegmentLight ret)) {
+        public CustomSegmentLight GetCustomLight(SegmentLightGroup group) {
+            if (!CustomLights.TryGetValue(group, out CustomSegmentLight ret)) {
                 ret = MainSegmentLight;
             }
 
             return ret;
 
-            // if (vehicleType != ExtVehicleType.None)
-            //  Log._Debug($"No traffic light for vehicle type {vehicleType} defined at
+            // if (group != ExtVehicleType.None)
+            //  Log._Debug($"No traffic light for vehicle type {group} defined at
             //     segment {segmentId}, node {nodeId}.");
         }
 
@@ -377,7 +378,7 @@ namespace TrafficManager.TrafficLight.Impl {
         }
 
         public void SetLights(CustomSegmentLights otherLights) {
-            foreach (KeyValuePair<ExtVehicleType, CustomSegmentLight> e in otherLights.CustomLights) {
+            foreach (KeyValuePair<SegmentLightGroup, CustomSegmentLight> e in otherLights.CustomLights) {
                 if (!CustomLights.TryGetValue(e.Key, out CustomSegmentLight ourLight)) {
                     continue;
                 }
@@ -587,7 +588,7 @@ namespace TrafficManager.TrafficLight.Impl {
             // light states if a segment is upgraded or replaced)
             CustomSegmentLight mainLight = MainSegmentLight;
             ushort nodeId = NodeId;
-            var setupLights = new HashSet<ExtVehicleType>();
+            var setupLights = new HashSet<SegmentLightGroup>();
 
             // TODO improve
             IDictionary<byte, ExtVehicleType> allAllowedTypes =
@@ -619,7 +620,7 @@ namespace TrafficManager.TrafficLight.Impl {
             uint separateLanes = 0;
             int defaultLanes = 0;
             NetInfo segmentInfo = SegmentId.ToSegment().Info;
-            VehicleTypeByLaneIndex = new ExtVehicleType?[segmentInfo.m_lanes.Length];
+            GroupsByLaneIndex = new SegmentLightGroup?[segmentInfo.m_lanes.Length];
 
             // TODO improve
             var laneIndicesWithoutSeparateLights = new HashSet<byte>(allAllowedTypes.Keys);
@@ -667,15 +668,15 @@ namespace TrafficManager.TrafficLight.Impl {
                         continue;
                     }
 
-                    ExtVehicleType mask = allowedTypes & ~ExtVehicleType.Emergency;
+                    var group = new SegmentLightGroup(allowedTypes & ~ExtVehicleType.Emergency);
 
                     Log._DebugIf(
                         logHouseKeeping,
                         () => $"CustomSegmentLights.Housekeeping({mayDelete}, {calculateAutoPedLight}): " +
                         $"housekeeping @ seg. {SegmentId}, node {nodeId}, lane {laneIndex}: " +
-                        $"Trying to add {mask} light");
+                        $"Trying to add {group} light");
 
-                    if (!CustomLights.TryGetValue(mask, out CustomSegmentLight segmentLight)) {
+                    if (!CustomLights.TryGetValue(group, out CustomSegmentLight segmentLight)) {
                         // add a new light
                         segmentLight = new CustomSegmentLight(
                             this,
@@ -694,27 +695,27 @@ namespace TrafficManager.TrafficLight.Impl {
                             logHouseKeeping,
                             () => $"CustomSegmentLights.Housekeeping({mayDelete}, {calculateAutoPedLight}): " +
                             $"housekeeping @ seg. {SegmentId}, node {nodeId}, lane {laneIndex}: " +
-                            $"Light for mask {mask} does not exist. Created new light: {segmentLight} " +
+                            $"Light for group {group} does not exist. Created new light: {segmentLight} " +
                             $"(mainLight: {mainLight})");
 
-                        CustomLights.Add(mask, segmentLight);
-                        VehicleTypes.AddFirst(mask);
+                        CustomLights.Add(group, segmentLight);
+                        Groups.AddFirst(group);
                     }
 
-                    mainVehicleType = mask;
-                    VehicleTypeByLaneIndex[laneIndex] = mask;
+                    mainVehicleType = group.VehicleType;
+                    GroupsByLaneIndex[laneIndex] = group;
                     laneIndicesWithoutSeparateLights.Remove(laneIndex);
                     ++separateLanes;
 
                     // addPedestrianLight = true;
-                    setupLights.Add(mask);
-                    SeparateVehicleTypes |= mask;
+                    setupLights.Add(group);
+                    SeparateVehicleTypes |= group.VehicleType;
 
                     if (logHouseKeeping) {
                         Log._DebugFormat(
                             "CustomSegmentLights.Housekeeping({0}, {1}): housekeeping @ seg. {2}, " +
                             "node {3}: Finished processing lane {4}: mainVehicleType={5}, " +
-                            "VehicleTypeByLaneIndex={6}, laneIndicesWithoutSeparateLights={7}, " +
+                            "GroupsByLaneIndex={6}, laneIndicesWithoutSeparateLights={7}, " +
                             "numLights={8}, SeparateVehicleTypes={9}",
                             mayDelete,
                             calculateAutoPedLight,
@@ -722,7 +723,7 @@ namespace TrafficManager.TrafficLight.Impl {
                             nodeId,
                             laneIndex,
                             mainVehicleType,
-                            VehicleTypeByLaneIndex.ArrayToString(),
+                            GroupsByLaneIndex.ArrayToString(),
                             laneIndicesWithoutSeparateLights.CollectionToString(),
                             separateLanes,
                             SeparateVehicleTypes);
@@ -739,7 +740,7 @@ namespace TrafficManager.TrafficLight.Impl {
 
                 // generic traffic lights
                 if (!CustomLights.TryGetValue(
-                        DEFAULT_MAIN_VEHICLETYPE,
+                        defaultGroup,
                         out CustomSegmentLight defaultSegmentLight)) {
                     defaultSegmentLight = new CustomSegmentLight(
                         this,
@@ -754,15 +755,15 @@ namespace TrafficManager.TrafficLight.Impl {
                             false);
                     }
 
-                    CustomLights.Add(DEFAULT_MAIN_VEHICLETYPE, defaultSegmentLight);
-                    VehicleTypes.AddFirst(DEFAULT_MAIN_VEHICLETYPE);
+                    CustomLights.Add(defaultGroup, defaultSegmentLight);
+                    Groups.AddFirst(defaultGroup);
                 }
 
-                mainVehicleType = DEFAULT_MAIN_VEHICLETYPE;
-                setupLights.Add(DEFAULT_MAIN_VEHICLETYPE);
+                mainVehicleType = defaultGroup.VehicleType;
+                setupLights.Add(defaultGroup);
 
                 foreach (byte laneIndex in laneIndicesWithoutSeparateLights) {
-                    VehicleTypeByLaneIndex[laneIndex] = ExtVehicleType.None;
+                    GroupsByLaneIndex[laneIndex] = new SegmentLightGroup(ExtVehicleType.None);
                 }
 
                 Log._DebugIf(
@@ -780,25 +781,25 @@ namespace TrafficManager.TrafficLight.Impl {
             if (logHouseKeeping) {
                 Log._DebugFormat(
                     "CustomSegmentLights.Housekeeping({0}, {1}): housekeeping @ seg. {2}, node {3}: " +
-                    "Created all necessary lights. VehicleTypeByLaneIndex={4}, CustomLights={5}",
+                    "Created all necessary lights. GroupsByLaneIndex={4}, CustomLights={5}",
                     mayDelete,
                     calculateAutoPedLight,
                     SegmentId,
                     nodeId,
-                    VehicleTypeByLaneIndex.ArrayToString(),
+                    GroupsByLaneIndex.ArrayToString(),
                     CustomLights.DictionaryToString());
             }
 
             if (mayDelete) {
                 // delete traffic lights for non-existing vehicle-separated configurations
-                var vehicleTypesToDelete = new HashSet<ExtVehicleType>();
+                var groupsToDelete = new HashSet<SegmentLightGroup>();
 
-                foreach (ExtVehicleType key in CustomLights.Keys) {
+                foreach (SegmentLightGroup key in CustomLights.Keys) {
                     // if (e.Key == DEFAULT_MAIN_VEHICLETYPE) {
                     //        continue;
                     // }
                     if (!setupLights.Contains(key)) {
-                        vehicleTypesToDelete.Add(key);
+                        groupsToDelete.Add(key);
                     }
                 }
 
@@ -810,20 +811,20 @@ namespace TrafficManager.TrafficLight.Impl {
                         calculateAutoPedLight,
                         SegmentId,
                         nodeId,
-                        vehicleTypesToDelete.CollectionToString());
+                        groupsToDelete.CollectionToString());
                 }
 
-                foreach (ExtVehicleType vehicleType in vehicleTypesToDelete) {
-                    CustomLights.Remove(vehicleType);
-                    VehicleTypes.Remove(vehicleType);
+                foreach (SegmentLightGroup group in groupsToDelete) {
+                    CustomLights.Remove(group);
+                    Groups.Remove(group);
                 }
             }
 
-            if (CustomLights.ContainsKey(DEFAULT_MAIN_VEHICLETYPE)
-                && VehicleTypes.First.Value != DEFAULT_MAIN_VEHICLETYPE)
+            if (CustomLights.ContainsKey(defaultGroup)
+                && Groups.First.Value != defaultGroup)
             {
-                VehicleTypes.Remove(DEFAULT_MAIN_VEHICLETYPE);
-                VehicleTypes.AddFirst(DEFAULT_MAIN_VEHICLETYPE);
+                Groups.Remove(defaultGroup);
+                Groups.AddFirst(defaultGroup);
             }
 
             // if (addPedestrianLight) {
@@ -844,12 +845,12 @@ namespace TrafficManager.TrafficLight.Impl {
             if (logHouseKeeping) {
                 Log._DebugFormat(
                     "CustomSegmentLights.Housekeeping({0}, {1}): housekeeping @ seg. {2}, node {3}: " +
-                    "Housekeeping complete. VehicleTypeByLaneIndex={4} CustomLights={5}",
+                    "Housekeeping complete. GroupsByLaneIndex={4} CustomLights={5}",
                     mayDelete,
                     calculateAutoPedLight,
                     SegmentId,
                     nodeId,
-                    VehicleTypeByLaneIndex.ArrayToString(),
+                    GroupsByLaneIndex.ArrayToString(),
                     CustomLights.DictionaryToString());
             }
         } // end Housekeeping()

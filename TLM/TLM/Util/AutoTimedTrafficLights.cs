@@ -225,14 +225,14 @@ namespace TrafficManager.Util {
             CustomSegmentLights liveSegmentLights = customTrafficLightsManager.GetSegmentLights(segmentId, startNode);
 
             //for each lane type
-            foreach (ExtVehicleType vehicleType in liveSegmentLights.VehicleTypes) {
+            foreach (SegmentLightGroup group in liveSegmentLights.Groups) {
                 //set light mode
-                CustomSegmentLight liveSegmentLight = liveSegmentLights.GetCustomLight(vehicleType);
+                CustomSegmentLight liveSegmentLight = liveSegmentLights.GetCustomLight(group);
                 liveSegmentLight.CurrentMode = LightMode.All;
 
                 TimedLight(nodeId).ChangeLightMode(
                     segmentId,
-                    vehicleType,
+                    group,
                     liveSegmentLight.CurrentMode);
 
                 // set light states

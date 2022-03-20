@@ -16,7 +16,7 @@ namespace TrafficManager.TrafficLight.Impl {
     /// <summary>
     /// Represents the traffic light (left, forward, right) at a specific segment end
     /// </summary>
-    public class CustomSegmentLight
+    internal class CustomSegmentLight
     {
         public CustomSegmentLight(CustomSegmentLights lights,
                                   RoadBaseAI.TrafficLightState mainLight) {

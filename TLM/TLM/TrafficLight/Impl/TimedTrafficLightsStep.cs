@@ -16,7 +16,7 @@ namespace TrafficManager.TrafficLight.Impl {
     using TrafficManager.Util.Extensions;
 
     // TODO class should be completely reworked, approx. in version 1.10
-    public class TimedTrafficLightsStep : ITrafficLightContainer
+    internal class TimedTrafficLightsStep : ITrafficLightContainer
     {
         public TimedTrafficLightsStep(TimedTrafficLights timedNode,
                                       int minTime,
@@ -216,9 +216,9 @@ namespace TrafficManager.TrafficLight.Impl {
         }
 
         public RoadBaseAI.TrafficLightState GetLightState(ushort segmentId,
-                                                          ExtVehicleType vehicleType,
+                                                          SegmentLightGroup group,
                                                           int lightType) {
-            CustomSegmentLight segLight = CustomSegmentLights[segmentId].GetCustomLight(vehicleType);
+            CustomSegmentLight segLight = CustomSegmentLights[segmentId].GetCustomLight(group);
 
             if (segLight != null) {
                 switch (lightType) {
@@ -434,27 +434,27 @@ namespace TrafficManager.TrafficLight.Impl {
                     //     {liveSegmentLights.PedestrianLightState.ToString()} /
                     //     {liveSegmentLights.AutoPedestrianLightState.ToString()}");
 
-                    if (logTrafficLights && curStepSegmentLights.VehicleTypes == null) {
-                        Log.Error("TimedTrafficLightsStep: curStepSegmentLights.VehicleTypes is null!");
+                    if (logTrafficLights && curStepSegmentLights.Groups == null) {
+                        Log.Error("TimedTrafficLightsStep: curStepSegmentLights.Groups is null!");
                         return;
                     }
 
-                    foreach (ExtVehicleType vehicleType in curStepSegmentLights.VehicleTypes) {
+                    foreach (SegmentLightGroup group in curStepSegmentLights.Groups) {
                         // Log._Debug($"TimedTrafficLightsStep.SetLights({noTransition})     ->
-                        //    segmentId={segmentId} @ NodeId={timedNode.NodeId} for vehicle {vehicleType}");
-                        CustomSegmentLight liveSegmentLight = liveSegmentLights.GetCustomLight(vehicleType);
+                        //    segmentId={segmentId} @ NodeId={timedNode.NodeId} for vehicle {group}");
+                        CustomSegmentLight liveSegmentLight = liveSegmentLights.GetCustomLight(group);
 
                         if (liveSegmentLight == null) {
                             Log._DebugIf(
                                 logTrafficLights,
                                 () => $"Timed step @ seg. {segmentId}, node {timedNode.NodeId} has " +
-                                $"a traffic light for {vehicleType} but the live segment does not have one.");
+                                $"a traffic light for {group} but the live segment does not have one.");
                             continue;
                         }
 
-                        CustomSegmentLight curStepSegmentLight = curStepSegmentLights.GetCustomLight(vehicleType);
-                        CustomSegmentLight prevStepSegmentLight = prevStepSegmentLights.GetCustomLight(vehicleType);
-                        CustomSegmentLight nextStepSegmentLight = nextStepSegmentLights.GetCustomLight(vehicleType);
+                        CustomSegmentLight curStepSegmentLight = curStepSegmentLights.GetCustomLight(group);
+                        CustomSegmentLight prevStepSegmentLight = prevStepSegmentLights.GetCustomLight(group);
+                        CustomSegmentLight nextStepSegmentLight = nextStepSegmentLights.GetCustomLight(group);
 
 #if DEBUG
                         if (logTrafficLights) {
@@ -516,12 +516,12 @@ namespace TrafficManager.TrafficLight.Impl {
                                 liveSegmentLight.LightRight,
                                 segmentId,
                                 timedNode.NodeId,
-                                vehicleType);
+                                group);
                         }
 #endif
 
                         // Log._Debug($"Step @ {timedNode.NodeId}: Segment {segmentId} for vehicle
-                        //     type {vehicleType}: L: {liveSegmentLight.LightLeft} F:
+                        //     type {group}: L: {liveSegmentLight.LightLeft} F:
                         //     {liveSegmentLight.LightMain} R: {liveSegmentLight.LightRight}");
                     }
 
@@ -854,7 +854,7 @@ namespace TrafficManager.TrafficLight.Impl {
 
                     IDictionary<ushort, uint>[] allVehiclesMetrics
                         = sourceSegmentEnd.MeasureOutgoingVehicles(true, logTrafficLights);
-                    ExtVehicleType?[] vehTypeByLaneIndex = segLights.VehicleTypeByLaneIndex;
+                    SegmentLightGroup?[] groupsByLaneIndex = segLights.GroupsByLaneIndex;
 
                     if (logTrafficLights) {
                         Log._DebugFormat(
@@ -863,7 +863,7 @@ namespace TrafficManager.TrafficLight.Impl {
                             timedNodeId,
                             string.Join(
                                 ", ",
-                                vehTypeByLaneIndex.Select(x => x == null ? "null" : x.ToString())
+                                groupsByLaneIndex.Select(x => x == null ? "null" : x.ToString())
                                     .ToArray()));
                     }
 
@@ -873,9 +873,9 @@ namespace TrafficManager.TrafficLight.Impl {
                     float curTotalSegWait = 0;
 
                     // loop over source lanes
-                    for (byte laneIndex = 0; laneIndex < vehTypeByLaneIndex.Length; ++laneIndex) {
-                        ExtVehicleType? vehicleType = vehTypeByLaneIndex[laneIndex];
-                        if (vehicleType == null) {
+                    for (byte laneIndex = 0; laneIndex < groupsByLaneIndex.Length; ++laneIndex) {
+                        SegmentLightGroup? group = groupsByLaneIndex[laneIndex];
+                        if (group == null) {
                             continue;
                         }
 
@@ -884,7 +884,7 @@ namespace TrafficManager.TrafficLight.Impl {
                             Log._DebugOnlyWarningIf(
                                 logTrafficLights,
                                 () => "Timed traffic light step: Failed to get custom light for vehicleType " +
-                                $"{vehicleType} @ seg. {sourceSegmentId}, node {timedNode.NodeId}!");
+                                $"{group} @ seg. {sourceSegmentId}, node {timedNode.NodeId}!");
 
                             continue;
                         }
@@ -897,14 +897,14 @@ namespace TrafficManager.TrafficLight.Impl {
                             Log._DebugIf(
                                 logTrafficLights,
                                 () => "TimedTrafficLightsStep.calcWaitFlow: No cars on lane " +
-                                $"{laneIndex} @ seg. {sourceSegmentId}. Vehicle types: {vehicleType}");
+                                $"{laneIndex} @ seg. {sourceSegmentId}. Vehicle types: {group}");
                             continue;
                         }
 
                         Log._DebugIf(
                             logTrafficLights,
                             () => $"TimedTrafficLightsStep.calcWaitFlow: Checking lane {laneIndex} " +
-                            $"@ seg. {sourceSegmentId}. Vehicle types: {vehicleType}");
+                            $"@ seg. {sourceSegmentId}. Vehicle types: {group}");
 
                         // loop over target segment: calculate waiting/moving traffic
                         uint numLaneFlows = 0;
@@ -1145,10 +1145,10 @@ namespace TrafficManager.TrafficLight.Impl {
         }
 
         internal void ChangeLightMode(ushort segmentId,
-                                      ExtVehicleType vehicleType,
+                                      SegmentLightGroup group,
                                       LightMode mode)
         {
-            CustomSegmentLight light = CustomSegmentLights[segmentId].GetCustomLight(vehicleType);
+            CustomSegmentLight light = CustomSegmentLights[segmentId].GetCustomLight(group);
             if (light != null) {
                 light.CurrentMode = mode;
             }

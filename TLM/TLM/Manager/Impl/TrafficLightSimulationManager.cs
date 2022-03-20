@@ -16,7 +16,7 @@ namespace TrafficManager.Manager.Impl {
     using ColossalFramework;
     using TrafficManager.Util.Extensions;
 
-    public class TrafficLightSimulationManager
+    internal class TrafficLightSimulationManager
         : AbstractGeometryObservingManager,
           ICustomDataManager<List<Configuration.TimedTrafficLights>>,
           ITrafficLightSimulationManager
@@ -668,7 +668,7 @@ namespace TrafficManager.Manager.Impl {
                                 $"{e2.Key} at node {cnfTimedLights.nodeId}");
 #endif
                                 if (!lights.CustomLights.TryGetValue(
-                                        LegacyExtVehicleType.ToNew(e2.Key),
+                                        new SegmentLightGroup(LegacyExtVehicleType.ToNew(e2.Key)),
                                         out CustomSegmentLight light)) {
 #if DEBUGLOAD
                                     Log._Debug($"No segment light found for timed step {j}, segment "+
@@ -679,7 +679,7 @@ namespace TrafficManager.Manager.Impl {
                                         first = false;
                                         if (!lights.CustomLights.TryGetValue(
                                                 CustomSegmentLights
-                                                    .DEFAULT_MAIN_VEHICLETYPE,
+                                                    .defaultGroup,
                                                 out light)) {
 #if DEBUGLOAD
                                             Log._Debug($"No segment light found for timed step {j}, "+
@@ -814,7 +814,7 @@ namespace TrafficManager.Manager.Impl {
                             $"{cnfSegLights.pedestrianLightState} {cnfSegLights.manualPedestrianMode}");
 #endif
 
-                            foreach (KeyValuePair<API.Traffic.Enums.ExtVehicleType,
+                            foreach (KeyValuePair<SegmentLightGroup,
                                          CustomSegmentLight> e2 in segLights.CustomLights) {
 #if DEBUGSAVE
                                 Log._Debug($"Saving timed light step {j}, segment {e.Key}, vehicleType "+
@@ -831,7 +831,7 @@ namespace TrafficManager.Manager.Impl {
                                 };
 
                                 cnfSegLights.customLights.Add(
-                                    LegacyExtVehicleType.ToOld(e2.Key),
+                                    LegacyExtVehicleType.ToOld(e2.Key.VehicleType),
                                     cnfSegLight);
                             }
                         }
