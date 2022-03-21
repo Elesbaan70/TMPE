@@ -1451,12 +1451,19 @@ namespace TrafficManager.UI.SubTools.TTL {
         }
 
         private void ShowGUI() {
+#if DEBUG
+            const bool log = true;
+#else
+            const bool log = false;
+#endif
+
             TrafficLightSimulationManager tlsMan = TrafficLightSimulationManager.Instance;
             CustomSegmentLightsManager customTrafficLightsManager = CustomSegmentLightsManager.Instance;
             JunctionRestrictionsManager junctionRestrictionsManager = JunctionRestrictionsManager.Instance;
             ExtSegmentManager extSegmentManager = ExtSegmentManager.Instance;
             IExtSegmentEndManager segEndMan = Constants.ManagerFactory.ExtSegmentEndManager;
             var vehicleInfoSignTextures = RoadUI.Instance.VehicleInfoSignTextures;
+            var laneConfigurationInfoSignTextures = RoadUI.Instance.LaneConfigurationInfoSignTextures;
             var hoveredSegment = false;
 
             foreach (ushort nodeId in selectedNodeIds) {
@@ -1684,23 +1691,53 @@ namespace TrafficManager.UI.SubTools.TTL {
 
                             int numInfos = 0;
 
-                            for (int k = 0; k < TrafficManagerTool.InfoSignsToDisplay.Length; ++k) {
-                                if ((TrafficManagerTool.InfoSignsToDisplay[k] & group.VehicleType) ==
-                                    ExtVehicleType.None) {
-                                    continue;
+                            if (group.VehicleType != ExtVehicleType.None) {
+
+                                bool skip = false;
+
+                                if (log && group.HasExtendedGrouping()) {
+                                    Log._Debug($"Light for extended grouping showing vehicle type [{group.VehicleType}].");
                                 }
 
-                                var infoRect = new Rect(
-                                    offsetScreenPos.x + modeWidth / 2f +
-                                    7f * zoom * (numInfos + 1) + infoWidth * numInfos,
-                                    offsetScreenPos.y - infoHeight / 2f,
-                                    infoWidth,
-                                    infoHeight);
-                                guiColor.a = TrafficManagerTool.GetHandleAlpha(false);
-                                GUI.DrawTexture(
-                                    infoRect,
-                                    vehicleInfoSignTextures[TrafficManagerTool.InfoSignsToDisplay[k]]);
-                                ++numInfos;
+                                for (int k = 0; k < TrafficManagerTool.InfoSignsToDisplay.Length; ++k) {
+                                    if ((TrafficManagerTool.InfoSignsToDisplay[k] & group.VehicleType) ==
+                                        ExtVehicleType.None) {
+                                        continue;
+                                    }
+
+                                    var infoRect = new Rect(
+                                        offsetScreenPos.x + modeWidth / 2f +
+                                        7f * zoom * (numInfos + 1) + infoWidth * numInfos,
+                                        offsetScreenPos.y - infoHeight / 2f,
+                                        infoWidth,
+                                        infoHeight);
+                                    guiColor.a = TrafficManagerTool.GetHandleAlpha(false);
+                                    GUI.DrawTexture(
+                                        infoRect,
+                                        vehicleInfoSignTextures[TrafficManagerTool.InfoSignsToDisplay[k]]);
+                                    ++numInfos;
+                                }
+                            }
+
+                            if (group.HasExtendedGrouping()) {
+                                for (int k = 0; k < TrafficManagerTool.LaneConfigInfoSignsToDisplay.Length; ++k) {
+                                    if ((TrafficManagerTool.LaneConfigInfoSignsToDisplay[k] & group.LaneEndFlags) ==
+                                        LaneEndFlags.None) {
+                                        continue;
+                                    }
+
+                                    var infoRect = new Rect(
+                                        offsetScreenPos.x + modeWidth / 2f +
+                                        7f * zoom * (numInfos + 1) + infoWidth * numInfos,
+                                        offsetScreenPos.y - infoHeight / 2f,
+                                        infoWidth,
+                                        infoHeight);
+                                    guiColor.a = TrafficManagerTool.GetHandleAlpha(false);
+                                    GUI.DrawTexture(
+                                        infoRect,
+                                        laneConfigurationInfoSignTextures[TrafficManagerTool.LaneConfigInfoSignsToDisplay[k]]);
+                                    ++numInfos;
+                                }
                             }
                         }
 

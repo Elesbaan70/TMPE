@@ -14,13 +14,13 @@ namespace TrafficManager.TrafficLight.Impl {
     using TrafficManager.Util;
     using TrafficManager.Manager.Impl;
     using TrafficManager.Util.Extensions;
+    using System.Linq;
 
     /// <summary>
     /// Represents the set of custom traffic lights located at a node
     /// </summary>
     internal class CustomSegmentLights
-        : SegmentEndId
-    {
+        : SegmentEndId {
         // private static readonly ExtVehicleType[] SINGLE_LANE_VEHICLETYPES
         // = new ExtVehicleType[] { ExtVehicleType.Tram, ExtVehicleType.Service,
         // ExtVehicleType.CargoTruck, ExtVehicleType.RoadPublicTransport
@@ -331,7 +331,8 @@ namespace TrafficManager.TrafficLight.Impl {
             Log._Debug($"CustomSegmentLights.GetCustomLight({laneIndex}): Group is {group}");
 #endif
 
-            if (!CustomLights.TryGetValue((SegmentLightGroup)group, out CustomSegmentLight light)) {
+            if (!CustomLights.TryGetValue((SegmentLightGroup)group, out CustomSegmentLight light)
+                    && !CustomLights.TryGetValue(group.Value.ForVehicleType(mainVehicleType), out light)) {
 #if DEBUGGET
                 Log._Debug($"CustomSegmentLights.GetCustomLight({laneIndex}): No custom light "+
                 $"found for group {group}");
@@ -346,7 +347,8 @@ namespace TrafficManager.TrafficLight.Impl {
         }
 
         public CustomSegmentLight GetCustomLight(SegmentLightGroup group) {
-            if (!CustomLights.TryGetValue(group, out CustomSegmentLight ret)) {
+            if (!CustomLights.TryGetValue(group, out CustomSegmentLight ret)
+                    && !CustomLights.TryGetValue(group.ForVehicleType(mainVehicleType), out ret)) {
                 ret = MainSegmentLight;
             }
 
@@ -554,8 +556,7 @@ namespace TrafficManager.TrafficLight.Impl {
                     } else if (((dir == ArrowDirection.Left && lht)
                                 || (dir == ArrowDirection.Right && !lht))
                                && ((lht && !otherLights.IsAllRightRed())
-                                   || (!lht && !otherLights.IsAllLeftRed())))
-                    {
+                                   || (!lht && !otherLights.IsAllLeftRed()))) {
                         Log._DebugIf(
                             logTrafficLights,
                             () => "CustomSegmentLights.CalculateAutoPedestrianLightState: " +
@@ -575,12 +576,22 @@ namespace TrafficManager.TrafficLight.Impl {
                 $"AutoPedestrianLightState for segment {SegmentId} @ {NodeId}: {AutoPedestrianLightState}");
         }
 
+        private IDictionary<byte, SegmentLightGroup> GetAllGroups() {
+            var vehicleTypes = VehicleRestrictionsManager.Instance.GetAllowedVehicleTypesAsDict(SegmentId, NodeId, VehicleRestrictionsMode.Restricted);
+
+            bool startNode = NodeId == SegmentId.ToSegment().m_startNode;
+
+            var segMgr = ExtSegmentManager.Instance;
+            var endMgr = LaneEndManager.Instance;
+            return vehicleTypes.ToDictionary(e => e.Key, e => new SegmentLightGroup(e.Value, endMgr.GetFlags(segMgr.GetLaneId(SegmentId, e.Key), startNode)));
+        }
+
         // TODO improve & remove
         public void Housekeeping(bool mayDelete, bool calculateAutoPedLight) {
-            // TODO lane-grouping - This will need to account for new properties in SegmentLightGroup, but this can't be coded reliably without a use case to test it on
-#if DEBUGHK
-            bool logHouseKeeping = DebugSwitch.TimedTrafficLights.Get()
-                                   && DebugSettings.NodeId == NodeId;
+#if DEBUG//HK
+            bool logHouseKeeping = true;
+            //bool logHouseKeeping = DebugSwitch.TimedTrafficLights.Get()
+            //                       && DebugSettings.NodeId == NodeId;
 #else
             const bool logHouseKeeping = false;
 #endif
@@ -592,11 +603,7 @@ namespace TrafficManager.TrafficLight.Impl {
             var setupLights = new HashSet<SegmentLightGroup>();
 
             // TODO improve
-            IDictionary<byte, ExtVehicleType> allAllowedTypes =
-                Constants.ManagerFactory.VehicleRestrictionsManager.GetAllowedVehicleTypesAsDict(
-                    SegmentId,
-                    nodeId,
-                    VehicleRestrictionsMode.Restricted);
+            var allGroups = GetAllGroups();
 
             ExtVehicleType allAllowedMask =
                 Constants.ManagerFactory.VehicleRestrictionsManager.GetAllowedVehicleTypes(
@@ -613,7 +620,7 @@ namespace TrafficManager.TrafficLight.Impl {
                     calculateAutoPedLight,
                     SegmentId,
                     nodeId,
-                    allAllowedTypes.DictionaryToString(),
+                    allGroups.DictionaryToString(),
                     allAllowedMask);
             }
 
@@ -624,24 +631,27 @@ namespace TrafficManager.TrafficLight.Impl {
             GroupsByLaneIndex = new SegmentLightGroup?[segmentInfo.m_lanes.Length];
 
             // TODO improve
-            var laneIndicesWithoutSeparateLights = new HashSet<byte>(allAllowedTypes.Keys);
+            var laneIndicesWithoutSeparateLights = new HashSet<byte>(allGroups.Keys);
 
             // check if separate traffic lights are required
-            bool separateLightsRequired = false;
+            bool separateLightsRequired = allGroups.Values.Any(g => g.HasExtendedGrouping());
 
-            foreach (KeyValuePair<byte, ExtVehicleType> e in allAllowedTypes) {
-                if (e.Value != allAllowedMask) {
-                    separateLightsRequired = true;
-                    break;
+            if (!separateLightsRequired) {
+                foreach (var e in allGroups) {
+                    if (e.Value.VehicleType != allAllowedMask) {
+                        separateLightsRequired = true;
+                        break;
+                    }
                 }
             }
 
             // set up vehicle-separated traffic lights
             if (separateLightsRequired) {
-                foreach (KeyValuePair<byte, ExtVehicleType> e in allAllowedTypes) {
+                foreach (var e in allGroups) {
                     byte laneIndex = e.Key;
                     NetInfo.Lane laneInfo = segmentInfo.m_lanes[laneIndex];
-                    ExtVehicleType allowedTypes = e.Value;
+                    var group = e.Value;
+                    ExtVehicleType allowedTypes = group.VehicleType;
                     ExtVehicleType defaultMask =
                         Constants.ManagerFactory.VehicleRestrictionsManager
                                  .GetDefaultAllowedVehicleTypes(
@@ -658,18 +668,22 @@ namespace TrafficManager.TrafficLight.Impl {
                         $"with allowedTypes={allowedTypes}, defaultMask={defaultMask}");
 
                     if (laneInfo.m_vehicleType == VehicleInfo.VehicleType.Car && allowedTypes == defaultMask) {
-                        Log._DebugIf(
-                            logHouseKeeping,
-                            () => $"CustomSegmentLights.Housekeeping({mayDelete}, {calculateAutoPedLight}): " +
-                            $"housekeeping @ seg. {SegmentId}, node {nodeId}, lane {laneIndex}: " +
-                            "Allowed types equal default mask. Ignoring lane.");
+                        if (group.HasExtendedGrouping()) {
+                            group.VehicleType = defaultGroup.VehicleType;
+                        } else {
+                            Log._DebugIf(
+                                logHouseKeeping,
+                                () => $"CustomSegmentLights.Housekeeping({mayDelete}, {calculateAutoPedLight}): " +
+                                $"housekeeping @ seg. {SegmentId}, node {nodeId}, lane {laneIndex}: " +
+                                "Allowed types equal default mask. Ignoring lane.");
 
-                        // no vehicle restrictions applied, generic lights are handled further below
-                        ++defaultLanes;
-                        continue;
+                            // no vehicle restrictions applied, generic lights are handled further below
+                            ++defaultLanes;
+                            continue;
+                        }
                     }
 
-                    var group = new SegmentLightGroup(allowedTypes & ~ExtVehicleType.Emergency);
+                    group.VehicleType &= ~ExtVehicleType.Emergency;
 
                     Log._DebugIf(
                         logHouseKeeping,
@@ -773,7 +787,7 @@ namespace TrafficManager.TrafficLight.Impl {
                     $"housekeeping @ seg. {SegmentId}, node {nodeId}: Added default main vehicle " +
                     $"light: {defaultSegmentLight}");
 
-                    // addPedestrianLight = true;
+                // addPedestrianLight = true;
             } else {
                 // addPedestrianLight = allAllowedMask == ExtVehicleType.None
                 //     || (allAllowedMask & ~ExtVehicleType.RailVehicle) != ExtVehicleType.None;
@@ -822,8 +836,7 @@ namespace TrafficManager.TrafficLight.Impl {
             }
 
             if (CustomLights.ContainsKey(defaultGroup)
-                && Groups.First.Value != defaultGroup)
-            {
+                && Groups.First.Value != defaultGroup) {
                 Groups.Remove(defaultGroup);
                 Groups.AddFirst(defaultGroup);
             }

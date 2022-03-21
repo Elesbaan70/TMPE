@@ -37,8 +37,7 @@ namespace TrafficManager.UI {
     [UsedImplicitly]
     public class TrafficManagerTool
         : DefaultTool,
-          IObserver<GlobalConfig>
-    {
+          IObserver<GlobalConfig> {
         // TODO [issue #710] Road adjust mechanism seem to have changed in Sunset Harbor DLC.
         // activate when we know the mechinism.
         private bool ReadjustPathMode => false; //ShiftIsPressed;
@@ -105,6 +104,10 @@ namespace TrafficManager.UI {
             ExtVehicleType.PassengerCar, ExtVehicleType.Bicycle, ExtVehicleType.Bus,
             ExtVehicleType.Taxi, ExtVehicleType.Tram, ExtVehicleType.CargoTruck,
             ExtVehicleType.Service, ExtVehicleType.RailVehicle,
+        };
+
+        internal static LaneEndFlags[] LaneConfigInfoSignsToDisplay = {
+            LaneEndFlags.CrossLeft, LaneEndFlags.CrossRight, LaneEndFlags.TurnOutOfDisplaced, LaneEndFlags.TurnIntoDisplaced, LaneEndFlags.ForwardDisplaced,
         };
 
         [Obsolete("Convert your legacy tools to new TrafficManagerSubTool style")]
@@ -303,7 +306,8 @@ namespace TrafficManager.UI {
                 nopeCursor_.m_texture = UIView.GetAView().defaultAtlas["Niet"]?.texture;
                 nopeCursor_.m_hotspot = new Vector2(45, 45);
                 Initialize();
-            } catch(Exception ex) {
+            }
+            catch (Exception ex) {
                 ex.LogException();
             }
         }
@@ -326,7 +330,7 @@ namespace TrafficManager.UI {
         public void SetToolMode(ToolMode newToolMode) {
             ToolMode oldToolMode = toolMode_;
 
-            if(toolMode_ != ToolMode.None && TMPELifecycle.PlayMode) {
+            if (toolMode_ != ToolMode.None && TMPELifecycle.PlayMode) {
                 // Make it impossible for user to undo changes performed by Road selection panels
                 // after changing traffic rule vis other tools.
                 // TODO: This code will not be necessary when we implement intent.
@@ -481,8 +485,7 @@ namespace TrafficManager.UI {
         /// Renders overlay when no subtool is active.
         /// May call base.RenderOverlay() without risk of infinte recursion.
         /// </summary>
-        void DefaultRenderOverlay(RenderManager.CameraInfo cameraInfo)
-        {
+        void DefaultRenderOverlay(RenderManager.CameraInfo cameraInfo) {
             if (!TMPELifecycle.PlayMode) {
                 return; // world info view panels are not availble in edit mode
             }
@@ -672,7 +675,8 @@ namespace TrafficManager.UI {
                 } else if (activeSubTool_ != null) {
                     activeSubTool_.UpdateEveryFrame();
                 }
-            } catch (Exception ex) {
+            }
+            catch (Exception ex) {
                 Log.Error("GUI Error: " + ex);
             }
         }
@@ -875,7 +879,7 @@ namespace TrafficManager.UI {
                     }
                 }
 
-                if(segmentId != 0 && raycastSegment) {
+                if (segmentId != 0 && raycastSegment) {
                     HitPos = segmentOutput.m_hitPos;
                     HoveredSegmentId = segmentId;
                 }
@@ -958,8 +962,7 @@ namespace TrafficManager.UI {
         // TODO: Extract into a Debug Tool GUI class
         private void DebugGuiDisplayLanes(ushort segmentId,
                                           ref NetSegment segment,
-                                          ref NetInfo segmentInfo)
-        {
+                                          ref NetInfo segmentInfo) {
             var _counterStyle = new GUIStyle();
             Vector3 centerPos = segment.m_bounds.center;
             bool visible = GeometryUtil.WorldToScreenPoint(centerPos, out Vector3 screenPos);
@@ -1182,7 +1185,7 @@ namespace TrafficManager.UI {
                 uint endVehicles = endMan.GetRegisteredVehicleCount(
                     ref endMan.ExtSegmentEnds[endMan.GetIndex((ushort)segmentId, false)]);
 
-                labelSb.AppendFormat( "\nstart veh.: {0}, end veh.: {1}", startVehicles, endVehicles);
+                labelSb.AppendFormat("\nstart veh.: {0}, end veh.: {1}", startVehicles, endVehicles);
 #endif
                 labelSb.AppendFormat("\nTraffic: {0} %", netSegment.m_trafficDensity);
 
@@ -1323,8 +1326,7 @@ namespace TrafficManager.UI {
             int startVehicleId = 1;
             int endVehicleId = Singleton<VehicleManager>.instance.m_vehicles.m_buffer.Length - 1;
 #if DEBUG
-            if (DebugSettings.VehicleId != 0)
-            {
+            if (DebugSettings.VehicleId != 0) {
                 startVehicleId = DebugSettings.VehicleId;
                 endVehicleId = DebugSettings.VehicleId;
             }
@@ -1651,7 +1653,8 @@ namespace TrafficManager.UI {
                     hotkeys: hotkeys);
 
                 UUIButton.isVisible = GlobalConfig.Instance.Main.UseUUI;
-            } catch(Exception ex) {
+            }
+            catch (Exception ex) {
                 ex.LogException();
             }
         }

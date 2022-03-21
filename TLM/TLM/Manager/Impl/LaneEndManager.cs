@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using TrafficManager.API.Traffic.Enums;
 using TrafficManager.Patch;
+using TrafficManager.State.ConfigData;
 using TrafficManager.Util;
 using TrafficManager.Util.Extensions;
 
@@ -89,8 +90,8 @@ namespace TrafficManager.Manager.Impl {
             }
 
             internal string ToString(uint laneId, bool startNode) {
-                return $"[LaneEnd {laneId}, {startNode}\n" +
-                        $"\flags={flags}\n" +
+                return $"[LaneEnd {laneId}, {startNode} on segment {laneId.ToLane().m_segment}\n" +
+                        $"\tflags={flags}\n" +
                         "LaneEnd]";
             }
 
@@ -103,65 +104,108 @@ namespace TrafficManager.Manager.Impl {
             }
 
             private bool Recalculate(uint laneId, bool startNode) {
+#if DEBUG
+                bool log = true;// DebugSwitch.LaneEnds.Get();
+#else
+                const bool log = false;
+#endif
+
+                if (log) {
+                    Log._Debug($"LaneEnd.Recalculate({laneId}, {startNode}) called.");
+                }
+
                 ref var lane = ref laneId.ToLane();
                 if (lane.IsValidWithSegment()) {
-                    flags = default;
 
-                    ref var segment = ref lane.m_segment.ToSegment();
-                    ushort nodeId = startNode ? segment.m_startNode : segment.m_endNode;
-                    ref var node = ref nodeId.ToNode();
-                    int laneIndex = ExtLaneManager.Instance.GetLaneIndex(laneId);
-                    bool isDisplacedLane = segment.Info.IsDisplacedLane(laneIndex);
-                    var farDirection = Shortcuts.LHT ? ArrowDirection.Right : ArrowDirection.Left;
-
-                    foreach (var connectionsBySegment in LaneConnectionManager.Instance.GetLaneConnections(laneId, startNode)
-                                                            .GroupBy(l => l.ToLane().m_segment)) {
-
-                        var otherSegmentId = connectionsBySegment.Key;
-                        ref var otherSegment = ref otherSegmentId.ToSegment();
-                        var otherHasDisplacedLanes = otherSegment.Info.HasDisplacedLanes();
-
-                        if (isDisplacedLane || otherHasDisplacedLanes) {
-
-                            var dir = ExtSegmentEndManager.Instance.GetDirection(lane.m_segment, otherSegmentId, nodeId);
-
-                            if (dir == farDirection || dir == ArrowDirection.Forward) {
-
-                                foreach (var otherLaneId in connectionsBySegment) {
-                                    int otherLaneIndex = ExtLaneManager.Instance.GetLaneIndex(otherLaneId);
-                                    bool isOtherDisplacedLane = otherHasDisplacedLanes && otherSegment.Info.IsDisplacedLane(otherLaneIndex);
-
-                                    if (dir == farDirection) {
-
-                                        if (isDisplacedLane)
-                                            flags |= LaneEndFlags.TurnOutOfDisplaced;
-
-                                        if (isOtherDisplacedLane)
-                                            flags |= LaneEndFlags.TurnIntoDisplaced;
-
-                                    } else if (dir == ArrowDirection.Forward) {
-
-                                        if (isOtherDisplacedLane) {
-                                            if (isOtherDisplacedLane) {
-                                                flags |= LaneEndFlags.ForwardDisplaced;
-                                            } else {
-                                                flags |= Shortcuts.LHT ? LaneEndFlags.CrossLeft : LaneEndFlags.CrossRight;
-                                            }
-                                        } else if (isOtherDisplacedLane) {
-                                            flags |= Shortcuts.LHT ? LaneEndFlags.CrossRight : LaneEndFlags.CrossLeft;
-                                        }
-                                    }
-                                }
-                            }
-
-                        }
+                    if (log) {
+                        Log._Debug($"LaneEnd.Recalculate: lane is valid with segment {laneId.ToLane().m_segment}");
                     }
 
+                    flags = default;
+
+                    if (LaneConnectionManager.Instance.HasConnections(laneId, startNode)) {
+
+                        ref var segment = ref lane.m_segment.ToSegment();
+                        ushort nodeId = startNode ? segment.m_startNode : segment.m_endNode;
+                        ref var node = ref nodeId.ToNode();
+                        int laneIndex = ExtLaneManager.Instance.GetLaneIndex(laneId);
+                        bool isDisplacedLane = segment.Info.IsDisplacedLane(laneIndex);
+                        var farDirection = Shortcuts.LHT ? ArrowDirection.Right : ArrowDirection.Left;
+
+                        if (log) {
+                            Log._Debug($"LaneEnd.Recalculate: connections found: nodeId={nodeId}, laneIndex={laneIndex}, isDisplacedLane={isDisplacedLane}, farDirection={farDirection}");
+                        }
+
+                        foreach (var connectionsBySegment in LaneConnectionManager.Instance.GetLaneConnections(laneId, startNode)
+                                                                .GroupBy(l => l.ToLane().m_segment)) {
+
+                            var otherSegmentId = connectionsBySegment.Key;
+                            ref var otherSegment = ref otherSegmentId.ToSegment();
+                            var otherHasDisplacedLanes = otherSegment.Info.HasDisplacedLanes();
+
+                            if (log) {
+                                Log._Debug($"LaneEnd.Recalculate: otherSegmentId={otherSegmentId}, otherHasDisplacedLanes={otherHasDisplacedLanes}");
+                            }
+
+                            if (isDisplacedLane || otherHasDisplacedLanes) {
+
+                                var dir = ExtSegmentEndManager.Instance.GetDirection(lane.m_segment, otherSegmentId, nodeId);
+
+                                if (dir == farDirection || dir == ArrowDirection.Forward) {
+
+                                    foreach (var otherLaneId in connectionsBySegment) {
+                                        int otherLaneIndex = ExtLaneManager.Instance.GetLaneIndex(otherLaneId);
+                                        bool isOtherDisplacedLane = otherHasDisplacedLanes && otherSegment.Info.IsDisplacedLane(otherLaneIndex);
+
+                                        if (log) {
+                                            Log._Debug($"LaneEnd.Recalculate: dir={dir}, otherLaneIndex={otherLaneIndex}, isOtherDisplacedLane={isOtherDisplacedLane}");
+                                        }
+
+                                        if (dir == farDirection) {
+
+                                            if (isDisplacedLane)
+                                                flags |= LaneEndFlags.TurnOutOfDisplaced;
+
+                                            if (isOtherDisplacedLane)
+                                                flags |= LaneEndFlags.TurnIntoDisplaced;
+
+                                        } else if (dir == ArrowDirection.Forward) {
+
+                                            if (isDisplacedLane) {
+                                                if (isOtherDisplacedLane) {
+                                                    flags |= LaneEndFlags.ForwardDisplaced;
+                                                } else {
+                                                    flags |= Shortcuts.LHT ? LaneEndFlags.CrossLeft : LaneEndFlags.CrossRight;
+                                                }
+                                            } else if (isOtherDisplacedLane) {
+                                                flags |= Shortcuts.LHT ? LaneEndFlags.CrossRight : LaneEndFlags.CrossLeft;
+                                            }
+                                        }
+                                    }
+                                } else if (log) {
+                                    Log._Debug($"LaneEnd.Recalculate: nothing to do on this segment: dir={dir}");
+                                }
+                            } else if (log) {
+                                Log._Debug($"LaneEnd.Recalculate: nothing to do on this segment: no displaced lanes");
+                            }
+                        }
+                    } else if (log) {
+                        Log._Debug($"LaneEnd.Recalculate: lane end has no connections");
+                    }
+
+
                     flags |= LaneEndFlags.Initialized;
+
+                    if (log) {
+                        Log._Debug($"LaneEnd.Recalculate: finishing with flags={flags}");
+                    }
 
                     return true;
                 }
                 Reset(laneId, startNode);
+                if (log) {
+                    Log._Debug($"LaneEnd.Recalculate: finishing with flags={flags}");
+                }
                 return false;
             }
 

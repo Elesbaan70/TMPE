@@ -171,6 +171,7 @@ namespace TrafficManager.Lifecycle {
             RegisteredManagers.Add(VehicleRestrictionsManager.Instance);
             RegisteredManagers.Add(ExtVehicleManager.Instance);
             RegisteredManagers.Add(ExtLaneManager.Instance);
+            RegisteredManagers.Add(LaneEndManager.Instance);
 
             // Texture managers
             RegisteredManagers.Add(UI.Textures.RoadSignThemes.Instance);
