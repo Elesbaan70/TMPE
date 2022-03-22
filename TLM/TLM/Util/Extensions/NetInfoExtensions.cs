@@ -12,6 +12,8 @@ namespace TrafficManager.Util.Extensions {
         public static bool IsAnyDisplaced(this NetInfo.Lane[] lanes) {
             if (lanes != null) {
                 float minForwardPos = float.MaxValue;
+                float minBackwardPos = float.MaxValue;
+                float maxForwardPos = float.MinValue;
                 float maxBackwardPos = float.MinValue;
                 for (int i = 0; i < lanes.Length; i++) {
                     var lane = lanes[i];
@@ -19,43 +21,61 @@ namespace TrafficManager.Util.Extensions {
                         if (lane.IsForward()) {
                             if (lane.m_position < minForwardPos) {
                                 minForwardPos = lane.m_position;
-                                if (minForwardPos < maxBackwardPos)
-                                    return true;
+                            }
+                            if (lane.m_position > maxForwardPos) {
+                                maxForwardPos = lane.m_position;
                             }
                         }
-                        if (lane.IsBackward() && lane.m_position > maxBackwardPos) {
-                            maxBackwardPos = lane.m_position;
-                            if (minForwardPos < maxBackwardPos)
-                                return true;
+                        if (lane.IsBackward()) {
+                            if (lane.m_position < minBackwardPos) {
+                                minBackwardPos = lane.m_position;
+                            }
+                            if (lane.m_position > maxBackwardPos) {
+                                maxBackwardPos = lane.m_position;
+                            }
                         }
                     }
                 }
+                return (minForwardPos < maxBackwardPos) ^ (minBackwardPos > maxForwardPos);
             }
             return false;
         }
 
         public static bool IsDisplaced(this NetInfo.Lane lane, NetInfo.Lane[] allLanes) {
             if (lane?.IsDrivingLane() == true) {
-                if (lane.IsForward()) {
-                    for (int i = 0; i < allLanes.Length; i++) {
-                        var otherLane = allLanes[i];
-                        if (otherLane?.IsDrivingLane() == true
-                                && otherLane.IsBackward()
-                                && lane.m_position < otherLane.m_position) {
-
-                            return true;
+                float minForwardPos = float.MaxValue;
+                float minBackwardPos = float.MaxValue;
+                float maxForwardPos = float.MinValue;
+                float maxBackwardPos = float.MinValue;
+                for (int i = 0; i < allLanes.Length; i++) {
+                    var othrLane = allLanes[i];
+                    if (othrLane?.IsDrivingLane() == true) {
+                        if (othrLane.IsForward()) {
+                            if (othrLane.m_position < minForwardPos) {
+                                minForwardPos = othrLane.m_position;
+                            }
+                            if (othrLane.m_position > maxForwardPos) {
+                                maxForwardPos = othrLane.m_position;
+                            }
+                        }
+                        if (othrLane.IsBackward()) {
+                            if (othrLane.m_position < minBackwardPos) {
+                                minBackwardPos = othrLane.m_position;
+                            }
+                            if (othrLane.m_position > maxBackwardPos) {
+                                maxBackwardPos = othrLane.m_position;
+                            }
                         }
                     }
                 }
-                if (lane.IsBackward()) {
-                    for (int i = 0; i < allLanes.Length; i++) {
-                        var otherLane = allLanes[i];
-                        if (otherLane?.IsDrivingLane() == true
-                                && otherLane.IsForward()
-                                && lane.m_position > otherLane.m_position) {
-
-                            return true;
-                        }
+                if (lane.IsForward() && lane.m_position < maxBackwardPos) {
+                    if (maxForwardPos > (lane.m_position < minBackwardPos ? minBackwardPos : maxBackwardPos)) {
+                        return true;
+                    }
+                }
+                if (lane.IsBackward() && lane.m_position > minForwardPos) {
+                    if (minBackwardPos < (lane.m_position > maxForwardPos ? maxForwardPos : minForwardPos)) {
+                        return true;
                     }
                 }
             }

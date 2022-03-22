@@ -27,10 +27,10 @@ namespace TMUnitTest.Util.Extensions.NetInfoExtensions {
                 Lane(Backward, 1),
             };
 
-            Assert.IsTrue(lanes[0].IsDisplaced(lanes));
-            Assert.IsTrue(lanes[1].IsDisplaced(lanes));
+            Assert.IsFalse(lanes[0].IsDisplaced(lanes));
+            Assert.IsFalse(lanes[1].IsDisplaced(lanes));
 
-            Assert.IsTrue(lanes.IsAnyDisplaced());
+            Assert.IsFalse(lanes.IsAnyDisplaced());
         }
 
         [TestMethod]
@@ -42,7 +42,7 @@ namespace TMUnitTest.Util.Extensions.NetInfoExtensions {
             };
 
             Assert.IsFalse(lanes[0].IsDisplaced(lanes));
-            Assert.IsTrue(lanes[1].IsDisplaced(lanes));
+            Assert.IsFalse(lanes[1].IsDisplaced(lanes));
             Assert.IsTrue(lanes[2].IsDisplaced(lanes));
 
             Assert.IsTrue(lanes.IsAnyDisplaced());
@@ -57,7 +57,7 @@ namespace TMUnitTest.Util.Extensions.NetInfoExtensions {
             };
 
             Assert.IsTrue(lanes[0].IsDisplaced(lanes));
-            Assert.IsTrue(lanes[1].IsDisplaced(lanes));
+            Assert.IsFalse(lanes[1].IsDisplaced(lanes));
             Assert.IsFalse(lanes[2].IsDisplaced(lanes));
 
             Assert.IsTrue(lanes.IsAnyDisplaced());
@@ -90,8 +90,8 @@ namespace TMUnitTest.Util.Extensions.NetInfoExtensions {
             };
 
             Assert.IsTrue(lanes[0].IsDisplaced(lanes));
-            Assert.IsTrue(lanes[1].IsDisplaced(lanes));
-            Assert.IsTrue(lanes[2].IsDisplaced(lanes));
+            Assert.IsFalse(lanes[1].IsDisplaced(lanes));
+            Assert.IsFalse(lanes[2].IsDisplaced(lanes));
             Assert.IsTrue(lanes[3].IsDisplaced(lanes));
 
             Assert.IsTrue(lanes.IsAnyDisplaced());
@@ -121,7 +121,7 @@ namespace TMUnitTest.Util.Extensions.NetInfoExtensions {
             };
 
             Assert.IsTrue(lanes[0].IsDisplaced(lanes));
-            Assert.IsTrue(lanes[1].IsDisplaced(lanes));
+            Assert.IsFalse(lanes[1].IsDisplaced(lanes));
             Assert.IsFalse(lanes[2].IsDisplaced(lanes));
 
             Assert.IsTrue(lanes.IsAnyDisplaced());
@@ -136,7 +136,7 @@ namespace TMUnitTest.Util.Extensions.NetInfoExtensions {
             };
 
             Assert.IsFalse(lanes[0].IsDisplaced(lanes));
-            Assert.IsTrue(lanes[1].IsDisplaced(lanes));
+            Assert.IsFalse(lanes[1].IsDisplaced(lanes));
             Assert.IsTrue(lanes[2].IsDisplaced(lanes));
 
             Assert.IsTrue(lanes.IsAnyDisplaced());
