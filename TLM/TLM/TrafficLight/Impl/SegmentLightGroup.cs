@@ -26,6 +26,8 @@ namespace TrafficManager.TrafficLight.Impl {
 
         public bool HasExtendedGrouping() => new SegmentLightGroup(VehicleType) != this;
 
+        public bool IsFullyAutomatic() => (LaneEndFlags & ~LaneEndFlags.Displacement) == 0;
+
         public override string ToString() {
             return $"[SegmentLightGroup VehicleType=[{VehicleType}], LaneEndFlags=[{LaneEndFlags}]]";
         }
