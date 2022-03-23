@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using TrafficManager.API.Manager;
 using TrafficManager.API.Traffic.Enums;
 using TrafficManager.Patch;
 using TrafficManager.State.ConfigData;
@@ -10,7 +11,7 @@ using TrafficManager.Util;
 using TrafficManager.Util.Extensions;
 
 namespace TrafficManager.Manager.Impl {
-    internal class LaneEndManager : AbstractCustomManager {
+    internal class LaneEndManager : AbstractCustomManager, ILaneEndManager {
 
         private static readonly object lockObject = new object();
 

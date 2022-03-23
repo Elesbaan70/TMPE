@@ -35,7 +35,9 @@ namespace TrafficManager.Manager.Impl {
         public ILaneArrowManager LaneArrowManager => Impl.LaneArrowManager.Instance;
 
         public ILaneConnectionManager LaneConnectionManager => Impl.LaneConnectionManager.Instance;
-        
+
+        public ILaneEndManager LaneEndManager => Impl.LaneEndManager.Instance;
+
         public IGeometryManager GeometryManager => Impl.GeometryManager.Instance;
 
         public IOptionsManager OptionsManager => Impl.OptionsManager.Instance;

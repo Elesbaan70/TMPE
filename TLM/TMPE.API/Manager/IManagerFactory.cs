@@ -1,10 +1,11 @@
-﻿namespace TrafficManager.API.Manager {
+namespace TrafficManager.API.Manager {
     public interface IManagerFactory {
         IAdvancedParkingManager AdvancedParkingManager { get; }
         ICustomSegmentLightsManager CustomSegmentLightsManager { get; }
         IExtBuildingManager ExtBuildingManager { get; }
         IExtCitizenInstanceManager ExtCitizenInstanceManager { get; }
         IExtCitizenManager ExtCitizenManager { get; }
+        IExtLaneManager ExtLaneManager { get; }
         IExtNodeManager ExtNodeManager { get; }
         IExtPathManager ExtPathManager { get; }
         IExtSegmentManager ExtSegmentManager { get; }
@@ -13,6 +14,7 @@
         IJunctionRestrictionsManager JunctionRestrictionsManager { get; }
         ILaneArrowManager LaneArrowManager { get; }
         ILaneConnectionManager LaneConnectionManager { get; }
+        ILaneEndManager LaneEndManager { get; }
         IGeometryManager GeometryManager { get; }
         IOptionsManager OptionsManager { get; }
         IParkingRestrictionsManager ParkingRestrictionsManager { get; }

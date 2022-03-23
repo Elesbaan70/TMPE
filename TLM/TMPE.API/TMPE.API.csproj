@@ -95,6 +95,7 @@
     <Compile Include="Manager\IJunctionRestrictionsManager.cs" />
     <Compile Include="Manager\ILaneArrowManager.cs" />
     <Compile Include="Manager\ILaneConnectionManager.cs" />
+    <Compile Include="Manager\ILaneEndManager.cs" />
     <Compile Include="Manager\IManagerFactory.cs" />
     <Compile Include="Manager\IOptionsManager.cs" />
     <Compile Include="Manager\IParkingRestrictionsManager.cs" />
