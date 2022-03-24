@@ -78,6 +78,7 @@ namespace TrafficManager.UI.SubTools {
             IExtSegmentEndManager segEndMan = Constants.ManagerFactory.ExtSegmentEndManager;
             var hoveredSegment = false;
             var vehicleInfoSignTextures = RoadUI.Instance.VehicleInfoSignTextures;
+            var laneConfigurationInfoSignTextures = RoadUI.Instance.LaneConfigurationInfoSignTextures;
 
             if (SelectedNodeId != 0) {
                 CustomSegmentLightsManager customTrafficLightsManager = CustomSegmentLightsManager.Instance;
@@ -250,6 +251,27 @@ namespace TrafficManager.UI.SubTools {
                                 GUI.DrawTexture(
                                     infoRect,
                                     vehicleInfoSignTextures[TrafficManagerTool.InfoSignsToDisplay[k]]);
+
+                                ++numInfos;
+                            }
+
+                            for (int k = 0; k < TrafficManagerTool.LaneConfigInfoSignsToDisplay.Length; ++k) {
+                                if ((TrafficManagerTool.LaneConfigInfoSignsToDisplay[k] & group.LaneEndFlags) ==
+                                    LaneEndFlags.None) {
+                                    continue;
+                                }
+
+                                var infoRect = new Rect(
+                                    offsetScreenPos.x + (modeWidth / 2f) +
+                                    (7f * zoom * (float)(numInfos + 1)) + (infoWidth * (float)numInfos),
+                                    offsetScreenPos.y - (infoHeight / 2f),
+                                    infoWidth,
+                                    infoHeight);
+                                guiColor.a = TrafficManagerTool.GetHandleAlpha(false);
+
+                                GUI.DrawTexture(
+                                    infoRect,
+                                    laneConfigurationInfoSignTextures[TrafficManagerTool.LaneConfigInfoSignsToDisplay[k]]);
 
                                 ++numInfos;
                             }
