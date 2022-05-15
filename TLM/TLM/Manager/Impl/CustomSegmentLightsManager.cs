@@ -9,6 +9,7 @@ namespace TrafficManager.Manager.Impl {
     using TrafficManager.TrafficLight;
     using TrafficManager.Util;
     using TrafficManager.Util.Extensions;
+    using TrafficManager.TrafficLight.Model;
 
     /// <summary>
     /// Manages the states of all custom traffic lights on the map

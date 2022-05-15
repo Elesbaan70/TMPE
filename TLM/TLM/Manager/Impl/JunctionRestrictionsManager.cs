@@ -17,8 +17,10 @@ namespace TrafficManager.Manager.Impl {
     using TrafficManager.Util;
     using TrafficManager.Util.Extensions;
     using TrafficManager.Lifecycle;
+    using TrafficManager.Manager.Model;
+    using TrafficManager.Persistence;
 
-    public class JunctionRestrictionsManager
+    public partial class JunctionRestrictionsManager
         : AbstractGeometryObservingManager,
           ICustomDataManager<List<Configuration.SegmentNodeConf>>,
           IJunctionRestrictionsManager
@@ -36,7 +38,57 @@ namespace TrafficManager.Manager.Impl {
         private JunctionRestrictionsManager() {
             segmentRestrictions = new SegmentJunctionRestrictions[NetManager.MAX_SEGMENT_COUNT];
             invalidSegmentRestrictions = new SegmentJunctionRestrictions[NetManager.MAX_SEGMENT_COUNT];
+
+            GlobalPersistence.PersistentObjects.Add(new Persistence());
         }
+
+        private IEnumerable<SegmentEndPair<JunctionRestrictionsModel>> EnumerateSegmentModels() {
+
+            for (ushort segmentId = 1; segmentId < NetManager.MAX_SEGMENT_COUNT; segmentId++) {
+
+                var netSegment = segmentId.ToSegment();
+
+                if (netSegment.IsValid()
+                        && netSegment.m_startNode.ToNode().IsValid()
+                        && netSegment.m_endNode.ToNode().IsValid()
+                        && !segmentRestrictions[segmentId].IsDefault()) {
+
+                    yield return new SegmentEndPair<JunctionRestrictionsModel> {
+                        segmentId = segmentId,
+                        start = segmentRestrictions[segmentId].startNodeRestrictions.Model,
+                        end = segmentRestrictions[segmentId].endNodeRestrictions.Model,
+                    };
+                }
+            }
+        }
+
+        private void AddSegmentModel(SegmentEndPair<JunctionRestrictionsModel> model) {
+
+            AddSegmentModel(model.start, model.segmentId, true);
+            AddSegmentModel(model.end, model.segmentId, false);
+        }
+
+        private void AddSegmentModel(JunctionRestrictionsModel model, ushort segmentId, bool startNode) {
+
+            ref var segment = ref segmentId.ToSegment();
+            ref var node = ref (startNode ? ref segment.m_startNode.ToNode() : ref segment.m_endNode.ToNode());
+
+            SetFlag(JunctionRestrictionFlags.AllowUTurn, IsUturnAllowedConfigurable, SetUturnAllowed, ref node);
+            SetFlag(JunctionRestrictionFlags.AllowNearTurnOnRed, IsNearTurnOnRedAllowedConfigurable, SetNearTurnOnRedAllowed, ref node);
+            SetFlag(JunctionRestrictionFlags.AllowFarTurnOnRed, IsFarTurnOnRedAllowedConfigurable, SetFarTurnOnRedAllowed, ref node);
+            SetFlag(JunctionRestrictionFlags.AllowForwardLaneChange, IsLaneChangingAllowedWhenGoingStraightConfigurable, SetLaneChangingAllowedWhenGoingStraight, ref node);
+            SetFlag(JunctionRestrictionFlags.AllowEnterWhenBlocked, IsEnteringBlockedJunctionAllowedConfigurable, SetEnteringBlockedJunctionAllowed, ref node);
+            SetFlag(JunctionRestrictionFlags.AllowPedestrianCrossing, IsPedestrianCrossingAllowedConfigurable, SetPedestrianCrossingAllowed, ref node);
+
+            void SetFlag(JunctionRestrictionFlags property, InternalGet isConfigurable, Func<ushort, bool, bool, bool> set, ref NetNode node) {
+
+                if ((model.mask & property) != 0 && isConfigurable(segmentId, startNode, ref node)) {
+                    set(segmentId, startNode, (model.values & property) != 0);
+                }
+            }
+        }
+
+        private delegate bool InternalGet(ushort segmentId, bool startNode, ref NetNode node);
 
         private void AddInvalidSegmentJunctionRestrictions(ushort segmentId,
                                                            bool startNode,
@@ -1318,15 +1370,6 @@ namespace TrafficManager.Manager.Impl {
             return ret;
         }
 
-        private enum JunctionRestrictionFlags {
-            AllowUTurn = 1 << 0,
-            AllowNearTurnOnRed = 1 << 1,
-            AllowFarTurnOnRed = 1 << 2,
-            AllowForwardLaneChange = 1 << 3,
-            AllowEnterWhenBlocked = 1 << 4,
-            AllowPedestrianCrossing = 1 << 5,
-        }
-
         private struct SegmentJunctionRestrictions {
             public JunctionRestrictions startNodeRestrictions;
             public JunctionRestrictions endNodeRestrictions;
@@ -1370,16 +1413,15 @@ namespace TrafficManager.Manager.Impl {
 
         private struct JunctionRestrictions {
 
-            private JunctionRestrictionFlags values;
-
-            private JunctionRestrictionFlags mask;
+            private JunctionRestrictionsModel model;
 
             private JunctionRestrictionFlags defaults;
 
+            public JunctionRestrictionsModel Model => model;
 
             public void ClearValue(JunctionRestrictionFlags flags) {
-                values &= ~flags;
-                mask &= ~flags;
+                model.values &= ~flags;
+                model.mask &= ~flags;
             }
 
             public void SetDefault(JunctionRestrictionFlags flags, bool value) {
@@ -1394,36 +1436,36 @@ namespace TrafficManager.Manager.Impl {
             }
 
             public bool HasValue(JunctionRestrictionFlags flags) {
-                return (mask & flags) == flags;
+                return (model.mask & flags) == flags;
             }
 
             public TernaryBool GetTernaryBool(JunctionRestrictionFlags flags) {
-                return (mask & flags) == flags
-                        ? (values & flags) == flags
+                return (model.mask & flags) == flags
+                        ? (model.values & flags) == flags
                             ? TernaryBool.True
                             : TernaryBool.False
                         : TernaryBool.Undefined;
             }
 
             public bool GetValueOrDefault(JunctionRestrictionFlags flags) {
-                return ((values & flags & mask) | (defaults & flags & ~mask)) == flags;
+                return ((model.values & flags & model.mask) | (defaults & flags & ~model.mask)) == flags;
             }
 
             public void SetValue(JunctionRestrictionFlags flags, TernaryBool value) {
                 switch (value) {
                     case TernaryBool.True:
-                        values |= flags;
-                        mask |= flags;
+                        model.values |= flags;
+                        model.mask |= flags;
                         break;
 
                     case TernaryBool.False:
-                        values &= ~flags;
-                        mask |= flags;
+                        model.values &= ~flags;
+                        model.mask |= flags;
                         break;
 
                     case TernaryBool.Undefined:
-                        values &= ~flags;
-                        mask &= ~flags;
+                        model.values &= ~flags;
+                        model.mask &= ~flags;
                         break;
 
                     default:
@@ -1432,11 +1474,11 @@ namespace TrafficManager.Manager.Impl {
             }
 
             public bool IsDefault() {
-                return ((values & mask) | (defaults & ~mask)) == defaults;
+                return ((model.values & model.mask) | (defaults & ~model.mask)) == defaults;
             }
 
             public void Reset(bool resetDefaults = true) {
-                values = mask = default;
+                model.values = model.mask = default;
 
                 if (resetDefaults) {
                     defaults = default;
@@ -1445,7 +1487,7 @@ namespace TrafficManager.Manager.Impl {
 
             public override string ToString() {
                 return string.Format(
-                    $"[JunctionRestrictions\n\tvalues = {values}\n\tmask = {mask}\n" +
+                    $"[JunctionRestrictions\n\tvalues = {model.values}\n\tmask = {model.mask}\n" +
                     $"defaults = {defaults}\n" +
                     "JunctionRestrictions]");
             }

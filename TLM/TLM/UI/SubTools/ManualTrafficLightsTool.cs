@@ -7,6 +7,7 @@ namespace TrafficManager.UI.SubTools {
     using TrafficManager.API.Traffic.Enums;
     using TrafficManager.Manager.Impl;
     using TrafficManager.TrafficLight.Impl;
+    using TrafficManager.TrafficLight.Model;
     using TrafficManager.UI.Helpers;
     using TrafficManager.UI.MainMenu.OSD;
     using TrafficManager.UI.Textures;

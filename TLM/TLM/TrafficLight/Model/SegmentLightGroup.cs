@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using TrafficManager.API.Traffic.Enums;
 
-namespace TrafficManager.TrafficLight.Impl {
+namespace TrafficManager.TrafficLight.Model {
     internal struct SegmentLightGroup : IEquatable<SegmentLightGroup> {
 
         public ExtVehicleType VehicleType;
@@ -24,9 +24,17 @@ namespace TrafficManager.TrafficLight.Impl {
 
         public SegmentLightGroup ForVehicleType(ExtVehicleType vehicleType) => new SegmentLightGroup(vehicleType, LaneEndFlags);
 
+        /// <summary>
+        /// Traffic lights are grouped on any properties other than vehicle type.
+        /// </summary>
+        /// <returns></returns>
         public bool HasExtendedGrouping() => new SegmentLightGroup(VehicleType) != this;
 
-        public bool IsFullyAutomatic() => (LaneEndFlags & ~LaneEndFlags.Displacement) == 0;
+        /// <summary>
+        /// All extended grouping properties were set automatically by the traffic AI.
+        /// </summary>
+        /// <returns></returns>
+        public bool IsAutomaticExtendedGrouping() => (LaneEndFlags & ~LaneEndFlags.Displacement) == 0;
 
         public override string ToString() {
             return $"[SegmentLightGroup VehicleType=[{VehicleType}], LaneEndFlags=[{LaneEndFlags}]]";

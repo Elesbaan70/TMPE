@@ -15,12 +15,15 @@ namespace TrafficManager.TrafficLight.Impl {
     using TrafficManager.Manager.Impl;
     using TrafficManager.Util.Extensions;
     using System.Linq;
+    using TrafficManager.TrafficLight.Model;
+    using System.Collections;
 
     /// <summary>
     /// Represents the set of custom traffic lights located at a node
     /// </summary>
     internal class CustomSegmentLights
-        : SegmentEndId {
+        : SegmentEndId, ICustomSegmentLightsModel
+    {
         // private static readonly ExtVehicleType[] SINGLE_LANE_VEHICLETYPES
         // = new ExtVehicleType[] { ExtVehicleType.Tram, ExtVehicleType.Service,
         // ExtVehicleType.CargoTruck, ExtVehicleType.RoadPublicTransport
@@ -709,7 +712,7 @@ namespace TrafficManager.TrafficLight.Impl {
                         $"group={group}");
 
                     if (laneInfo.m_vehicleType == VehicleInfo.VehicleType.Car && allowedTypes == defaultMask) {
-                        if (!group.HasExtendedGrouping() || (group.IsFullyAutomatic() && (e.Value.laneArrows & defaultLaneArrows) == 0)) {
+                        if (!group.HasExtendedGrouping() || (group.IsAutomaticExtendedGrouping() && (e.Value.laneArrows & defaultLaneArrows) == 0)) {
                             Log._DebugIf(
                                 logHouseKeeping,
                                 () => $"CustomSegmentLights.Housekeeping({mayDelete}, {calculateAutoPedLight}): " +
@@ -908,5 +911,19 @@ namespace TrafficManager.TrafficLight.Impl {
                     CustomLights.DictionaryToString());
             }
         } // end Housekeeping()
+
+        IEnumerator<CustomSegmentLightModel> IEnumerable<CustomSegmentLightModel>.GetEnumerator() {
+            foreach (var light in CustomLights) {
+                yield return new CustomSegmentLightModel() {
+                    Key = light.Key,
+                    CurrentMode = light.Value.CurrentMode,
+                    LightLeft = light.Value.LightLeft,
+                    LightMain = light.Value.LightMain,
+                    LightRight = light.Value.LightRight,
+                };
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable<CustomSegmentLightModel>)this).GetEnumerator();
     } // end class
 }

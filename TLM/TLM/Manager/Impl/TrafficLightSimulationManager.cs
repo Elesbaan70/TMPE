@@ -15,8 +15,10 @@ namespace TrafficManager.Manager.Impl {
     using TrafficManager.Util;
     using ColossalFramework;
     using TrafficManager.Util.Extensions;
+    using TrafficManager.Persistence;
+    using TrafficManager.TrafficLight.Model;
 
-    internal class TrafficLightSimulationManager
+    internal partial class TrafficLightSimulationManager
         : AbstractGeometryObservingManager,
           ICustomDataManager<List<Configuration.TimedTrafficLights>>,
           ITrafficLightSimulationManager
@@ -29,10 +31,21 @@ namespace TrafficManager.Manager.Impl {
             for (int i = 0; i < TrafficLightSimulations.Length; ++i) {
                 TrafficLightSimulations[i] = new TrafficLightSimulation((ushort)i);
             }
+
+            GlobalPersistence.PersistentObjects.Add(new Persistence());
         }
 
         public static readonly TrafficLightSimulationManager Instance =
             new TrafficLightSimulationManager();
+
+        private IEnumerable<TimedTrafficLights> EnumerateTimedTrafficLights() {
+
+            for (int i = 0; i < NetManager.MAX_NODE_COUNT; i++) {
+                if (TrafficLightSimulations[i].IsTimedLight()) {
+                    yield return TrafficLightSimulations[i].timedLight;
+                }
+            }
+        }
 
         /// <summary>
         /// For each node id: traffic light simulation assigned to the node
@@ -820,6 +833,14 @@ namespace TrafficManager.Manager.Impl {
                                 Log._Debug($"Saving timed light step {j}, segment {e.Key}, vehicleType "+
                                 $"{e2.Key} at node {nodeId}.");
 #endif
+
+                                if (e2.Key.HasExtendedGrouping()
+                                        && segLights.CustomLights.ContainsKey(new SegmentLightGroup(e2.Key.VehicleType))) {
+
+                                    // there is a light for this vehicle type with no flags, so we'll skip this one
+                                    continue;
+                                }
+
                                 CustomSegmentLight segLight = e2.Value;
                                 var cnfSegLight = new Configuration.CustomSegmentLight {
                                     nodeId = lightsNodeId, // TODO not needed

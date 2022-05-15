@@ -11,6 +11,7 @@ namespace TrafficManager.UI.SubTools.TTL {
     using TrafficManager.Manager.Impl;
     using TrafficManager.State;
     using TrafficManager.TrafficLight.Impl;
+    using TrafficManager.TrafficLight.Model;
     using TrafficManager.U;
     using TrafficManager.UI.Helpers;
     using TrafficManager.UI.MainMenu.OSD;
