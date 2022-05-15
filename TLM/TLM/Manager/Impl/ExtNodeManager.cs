@@ -38,7 +38,7 @@ namespace TrafficManager.Manager.Impl {
         /// <param name="nodeId">NodeId of the node to test.</param>
         /// <returns></returns>
         public static bool JunctionHasHighwayRules(ushort nodeId) {
-            return JunctionHasOnlyHighwayRoads(nodeId) && !LaneConnectionManager.Instance.HasNodeConnections(nodeId);
+            return JunctionHasOnlyHighwayRoads(nodeId) && !LaneConnection.LaneConnectionManager.Instance.Sub.HasNodeConnections(nodeId);
         }
 
         public GetNodeSegmentIdsEnumerable GetNodeSegmentIds(ushort nodeId, ClockDirection clockDirection) {
@@ -90,10 +90,9 @@ namespace TrafficManager.Manager.Impl {
             {
                 var replacement = new SegmentEndReplacement {
                     oldSegmentEndId = ExtNodes[nodeId].removedSegmentEndId,
-                    newSegmentEndId = new SegmentEndId(
-                        segmentId,
-                        (bool)ExtSegmentManager.Instance.IsStartNode(segmentId, nodeId)),
+                    newSegmentEndId = new SegmentEndId(segmentId, nodeId),
                 };
+
                 ExtNodes[nodeId].removedSegmentEndId = null;
                 Constants.ManagerFactory.GeometryManager.OnSegmentEndReplacement(replacement);
             }
@@ -101,9 +100,7 @@ namespace TrafficManager.Manager.Impl {
 
         public void RemoveSegment(ushort nodeId, ushort segmentId) {
             if (ExtNodes[nodeId].segmentIds.Remove(segmentId)) {
-                ExtNodes[nodeId].removedSegmentEndId = new SegmentEndId(
-                    segmentId,
-                    (bool)ExtSegmentManager.Instance.IsStartNode(segmentId, nodeId));
+                ExtNodes[nodeId].removedSegmentEndId = new SegmentEndId(segmentId, nodeId);
             }
         }
 

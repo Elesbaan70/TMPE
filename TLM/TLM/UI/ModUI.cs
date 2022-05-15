@@ -146,8 +146,9 @@ namespace TrafficManager.UI {
                     UnityEngine.Object.Destroy(keyHandler);
                 }
 
-                UnityEngine.Object.Destroy(MainMenu);
-                UnityEngine.Object.Destroy(MainMenuButton);
+                // intentionally DestroyImmediate() - normal Destroy() is delayed
+                UnityEngine.Object.DestroyImmediate(MainMenu);
+                UnityEngine.Object.DestroyImmediate(MainMenuButton);
                 MainMenu = null;
                 MainMenuButton = null;
 #if DEBUG
@@ -241,7 +242,7 @@ namespace TrafficManager.UI {
 
             // Do not handle ChangeTheme result assuming that savegame always has the selected theme
             // and MPH display in a consistent state
-            RoadSignThemes.Instance.ChangeTheme(
+            RoadSignThemeManager.Instance.ChangeTheme(
                 newTheme: GlobalConfig.Instance.Main.RoadSignTheme,
                 mphEnabled: GlobalConfig.Instance.Main.DisplaySpeedLimitsMph);
         }

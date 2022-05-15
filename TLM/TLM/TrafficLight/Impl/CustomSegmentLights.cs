@@ -29,7 +29,7 @@ namespace TrafficManager.TrafficLight.Impl {
         internal static readonly SegmentLightGroup defaultGroup = new SegmentLightGroup(DEFAULT_MAIN_VEHICLETYPE);
 
         [Obsolete]
-        internal CustomSegmentLights(ITrafficLightContainer lightsContainer,
+        protected CustomSegmentLights(ITrafficLightContainer lightsContainer,
                                       ushort nodeId,
                                       ushort segmentId,
                                       bool calculateAutoPedLight)
@@ -39,7 +39,7 @@ namespace TrafficManager.TrafficLight.Impl {
                 nodeId == segmentId.ToSegment().m_startNode,
                 calculateAutoPedLight) { }
 
-        internal CustomSegmentLights(ITrafficLightContainer lightsContainer,
+        public CustomSegmentLights(ITrafficLightContainer lightsContainer,
                                    ushort segmentId,
                                    bool startNode,
                                    bool calculateAutoPedLight)
@@ -50,7 +50,7 @@ namespace TrafficManager.TrafficLight.Impl {
                 calculateAutoPedLight,
                 true) { }
 
-        internal CustomSegmentLights(ITrafficLightContainer lightsContainer,
+        public CustomSegmentLights(ITrafficLightContainer lightsContainer,
                                    ushort segmentId,
                                    bool startNode,
                                    bool calculateAutoPedLight,
@@ -146,7 +146,7 @@ namespace TrafficManager.TrafficLight.Impl {
             }
         }
 
-        internal ITrafficLightContainer LightsContainer {
+        public ITrafficLightContainer LightsContainer {
             get => lightsContainer;
 
             [UsedImplicitly]
@@ -181,7 +181,7 @@ namespace TrafficManager.TrafficLight.Impl {
                 MainSegmentLight);
         }
 
-        internal bool Relocate(ushort segmentId,
+        public bool Relocate(ushort segmentId,
                              bool startNode,
                              ITrafficLightContainer lightsContainer) {
             if (Relocate(segmentId, startNode)) {
@@ -281,7 +281,7 @@ namespace TrafficManager.TrafficLight.Impl {
             return Clone(LightsContainer, true);
         }
 
-        internal CustomSegmentLights Clone(ITrafficLightContainer newLightsManager,
+        public CustomSegmentLights Clone(ITrafficLightContainer newLightsManager,
                                           bool performHousekeeping = true) {
             var clone = new CustomSegmentLights(
                 newLightsManager ?? LightsContainer,
@@ -492,17 +492,19 @@ namespace TrafficManager.TrafficLight.Impl {
             ExtSegmentManager extSegmentManager = ExtSegmentManager.Instance;
 
             if (!(segEnd.incoming && seg.oneWay)) {
-                for (int i = 0; i < 8; ++i) {
-                    ushort otherSegmentId = node.GetSegment(i);
+                for (int segmentIndex = 0; segmentIndex < Constants.MAX_SEGMENTS_OF_NODE; ++segmentIndex) {
+                    ushort otherSegmentId = node.GetSegment(segmentIndex);
 
                     if (otherSegmentId == 0 || otherSegmentId == SegmentId) {
                         continue;
                     }
 
+                    ref NetSegment otherSegment = ref otherSegmentId.ToSegment();
+
                     // ExtSegment otherSeg = segMan.ExtSegments[otherSegmentId];
                     int index0 = segEndMan.GetIndex(
                         otherSegmentId,
-                        (bool)extSegmentManager.IsStartNode(otherSegmentId, NodeId));
+                        otherSegment.IsStartNode(NodeId));
 
                     if (!segEndMan.ExtSegmentEnds[index0].incoming) {
                         continue;
@@ -524,7 +526,7 @@ namespace TrafficManager.TrafficLight.Impl {
                         continue;
                     }
 
-                    ItemClass nextConnectionClass = otherSegmentId.ToSegment().Info.GetConnectionClass();
+                    ItemClass nextConnectionClass = otherSegment.Info.GetConnectionClass();
                     if (nextConnectionClass.m_service != prevConnectionClass.m_service) {
                         if (logTrafficLights) {
                             Log._DebugFormat(

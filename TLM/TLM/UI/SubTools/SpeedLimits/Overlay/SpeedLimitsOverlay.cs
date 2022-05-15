@@ -85,7 +85,7 @@ namespace TrafficManager.UI.SubTools.SpeedLimits.Overlay {
         /// and to carry drawing state between multiple calls without using class fields.</summary>
         private class DrawEnv {
             public Vector2 signsThemeAspectRatio_;
-            public RoadSignThemes.RoadSignTheme largeSignsTextures_;
+            public RoadSignTheme largeSignsTextures_;
 
             /// <summary>
             /// This is set to true if the user will see blue default signs, or the user is holding
@@ -347,15 +347,15 @@ namespace TrafficManager.UI.SubTools.SpeedLimits.Overlay {
 
             bool hover = false;
             DrawEnv drawEnv = new DrawEnv {
-                signsThemeAspectRatio_ = RoadSignThemes.ActiveTheme.GetAspectRatio(),
+                signsThemeAspectRatio_ = RoadSignThemeManager.ActiveTheme.GetAspectRatio(),
                 largeSignsTextures_ = args.ToolMode switch {
-                    SpeedlimitsToolMode.Segments => RoadSignThemes.ActiveTheme,
-                    SpeedlimitsToolMode.Lanes => RoadSignThemes.ActiveTheme,
+                    SpeedlimitsToolMode.Segments => RoadSignThemeManager.ActiveTheme,
+                    SpeedlimitsToolMode.Lanes => RoadSignThemeManager.ActiveTheme,
 
                     // Defaults can show normal textures if the user holds Alt
                     SpeedlimitsToolMode.Defaults => args.ToolMode == SpeedlimitsToolMode.Defaults
-                                                        ? RoadSignThemes.ActiveTheme
-                                                        : RoadSignThemes.Instance.RoadDefaults,
+                                                        ? RoadSignThemeManager.ActiveTheme
+                                                        : RoadSignThemeManager.Instance.SpeedLimitDefaults,
                     _ => throw new ArgumentOutOfRangeException(),
                 },
                 drawDefaults_ = args.ToolMode == SpeedlimitsToolMode.Defaults,
@@ -502,7 +502,7 @@ namespace TrafficManager.UI.SubTools.SpeedLimits.Overlay {
             [NotNull] DrawArgs args)
         {
             Vector2 aspectRatio = drawEnv.drawDefaults_
-                                     ? RoadSignThemes.DefaultSpeedlimitsAspectRatio()
+                                     ? RoadSignThemeManager.DefaultSpeedlimitsAspectRatio()
                                      : drawEnv.signsThemeAspectRatio_;
 
             // TODO: Replace formula in visibleScale and size to use Constants.OVERLAY_INTERACTIVE_SIGN_SIZE and OVERLAY_READONLY_SIGN_SIZE
@@ -537,22 +537,16 @@ namespace TrafficManager.UI.SubTools.SpeedLimits.Overlay {
                 //-------------------------------------
                 squareSignRenderer.Reset(
                     screenPos,
-                    size: size * RoadSignThemes.DefaultSpeedlimitsAspectRatio());
+                    size: size * RoadSignThemeManager.DefaultSpeedlimitsAspectRatio());
                 squareSignRenderer.DrawLargeTexture(
                     speedlimit: defaultSpeedLimit,
-                    theme: RoadSignThemes.Instance.RoadDefaults);
+                    theme: RoadSignThemeManager.Instance.SpeedLimitDefaults);
             } else {
                 //-------------------------------------
                 // Draw override, if exists, otherwise draw circle and small blue default
                 // Get speed limit override for segment
                 //-------------------------------------
-                SpeedValue? overrideSpeedlimitForward =
-                    SpeedLimitManager.Instance.CalculateCustomSpeedLimit(segmentId, finalDir: NetInfo.Direction.Forward);
-                SpeedValue? overrideSpeedlimitBack =
-                    SpeedLimitManager.Instance.CalculateCustomSpeedLimit(segmentId, finalDir: NetInfo.Direction.Backward);
-                SpeedValue? drawSpeedlimit = GetAverageSpeedlimit(
-                    forward: overrideSpeedlimitForward,
-                    back: overrideSpeedlimitBack);
+                SpeedValue? drawSpeedlimit = SpeedLimitManager.Instance.CalculateCustomSpeedLimit(segmentId, SpeedLimitManager.VEHICLE_TYPES);
 
                 bool isDefaultSpeed =
                     !drawSpeedlimit.HasValue ||
@@ -590,13 +584,6 @@ namespace TrafficManager.UI.SubTools.SpeedLimits.Overlay {
             return true;
         }
 
-        private SpeedValue? GetAverageSpeedlimit(SpeedValue? forward, SpeedValue? back) {
-            if (forward.HasValue && back.HasValue) {
-                return (forward.Value + back.Value).Scale(0.5f);
-            }
-            return forward ?? back;
-        }
-
         /// <summary>Draw speed limit handles one per lane.</summary>
         /// <param name="segmentId">Seg id.</param>
         /// <param name="segmentCenterPos">Cached or calculated via Segment.GetCenter() center of bezier.</param>
@@ -629,14 +616,11 @@ namespace TrafficManager.UI.SubTools.SpeedLimits.Overlay {
 
             Vector3 drawOriginPos = segmentCenterPos -
                                     (0.5f * (((numLanes - 1) + numDirections) - 1) * signSize * xu);
-            ExtSegmentManager extSegmentManager = ExtSegmentManager.Instance;
 
-            IList<LanePos> sortedLanes = extSegmentManager.GetSortedLanes(
-                segmentId: segmentId,
-                segment: ref segment,
-                startNode: null,
-                laneTypeFilter: SpeedLimitManager.LANE_TYPES,
-                vehicleTypeFilter: SpeedLimitManager.VEHICLE_TYPES);
+            var sortedLanes = segment.GetSortedLanes(
+                null,
+                SpeedLimitManager.LANE_TYPES,
+                SpeedLimitManager.VEHICLE_TYPES);
 
             bool onlyMonorailLanes = sortedLanes.Count > 0;
 
@@ -669,7 +653,7 @@ namespace TrafficManager.UI.SubTools.SpeedLimits.Overlay {
 
             // Defaults have 1:1 ratio (square textures)
             Vector2 largeRatio = drawEnv.drawDefaults_
-                                     ? RoadSignThemes.DefaultSpeedlimitsAspectRatio()
+                                     ? RoadSignThemeManager.DefaultSpeedlimitsAspectRatio()
                                      : drawEnv.signsThemeAspectRatio_;
 
             // Signs are rendered in a grid starting from col 0

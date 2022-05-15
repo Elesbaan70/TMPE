@@ -12,6 +12,7 @@ namespace TrafficManager.Util {
     using TrafficManager.Util.Extensions;
     using UnityEngine;
     using ColossalFramework.UI;
+    using System.Diagnostics;
 
     internal static class Shortcuts {
         internal static bool InSimulationThread() =>
@@ -130,6 +131,29 @@ namespace TrafficManager.Util {
             }
         }
 
+        /// <summary>
+        /// Designed for testing enum/flag parameter values in DEBUG builds.
+        /// Logs error if <paramref name="value"/> is <c>None</c>, ie. <c>(int)value == 0</c>.
+        /// </summary>
+        /// <typeparam name="T">Must be some kind of <see cref="Enum"/>.</typeparam>
+        /// <param name="value">Value to test.</param>
+        /// <param name="m">Name of the value or other informative messsage.</param>
+        /// <example>AssertNotZero((int)laneType);</example>
+        /// <remarks>Conditional("DEBUG") - no perforamnce impact on release builds.</remarks>
+        /// <exception cref="ArgumentException">
+        /// Thrown if <typeparamref name="T"/> is not some kind of <see cref="Enum"/>.
+        /// </exception>
+        [Conditional("DEBUG")]
+        internal static void AssertNotNone<T>(T value, string m = "") {
+            if (!typeof(T).IsEnum)
+                throw new ArgumentException($"Type '{typeof(T).FullName}' is not an enum");
+
+            T none = default;
+
+            if (value.Equals(none))
+                Log.Error("Assertion failed. Enum value must not be None: " + m);
+        }
+
         internal static void Assert(bool con, string m = "") {
             if (!con) {
                 Log.Error("Assertion failed: " + m);
@@ -202,22 +226,6 @@ namespace TrafficManager.Util {
         internal static Vector3 ChangeY(this Vector3 vector, float newY) {
             vector.y = newY;
             return vector;
-        }
-
-        /// <summary>
-        /// Appends DLC_BitMasks not assigned in SteamHelper.GetOwnedDLCMask() (probably vanilla bug)
-        /// </summary>
-        /// <param name="dlcBitMask">bitMask value to append missing flags</param>
-        /// <returns></returns>
-        internal static SteamHelper.DLC_BitMask IncludingMissingGameDlcBitmasks(this SteamHelper.DLC_BitMask dlcBitMask) {
-            if (SteamHelper.IsDLCOwned(SteamHelper.DLC.ModderPack7)) {
-                dlcBitMask |= SteamHelper.DLC_BitMask.ModderPack7; //Bridges & Piers
-            }
-            if (SteamHelper.IsDLCOwned(SteamHelper.DLC.ModderPack8)) {
-                dlcBitMask |= SteamHelper.DLC_BitMask.ModderPack8; //Train Stations
-            }
-
-            return dlcBitMask;
         }
     }
 }

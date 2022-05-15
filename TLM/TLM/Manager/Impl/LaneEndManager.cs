@@ -30,7 +30,7 @@ namespace TrafficManager.Manager.Impl {
             }
 
             NetManagerEvents.Instance.ReleasedLane += ReleasedLane;
-            LaneConnectionManager.Instance.ConnectionsChanged += ConnectionsChanged;
+            LaneConnection.LaneConnectionManager.Instance.ConnectionsChanged += ConnectionsChanged;
         }
 
         public static LaneEndManager Instance { get; }
@@ -124,7 +124,7 @@ namespace TrafficManager.Manager.Impl {
 
                     flags = default;
 
-                    if (LaneConnectionManager.Instance.HasConnections(laneId, startNode)) {
+                    if (LaneConnection.LaneConnectionManager.Instance.HasConnections(laneId, startNode)) {
 
                         ref var segment = ref lane.m_segment.ToSegment();
                         ushort nodeId = startNode ? segment.m_startNode : segment.m_endNode;
@@ -137,7 +137,7 @@ namespace TrafficManager.Manager.Impl {
                             Log._Debug($"LaneEnd.Recalculate: connections found: nodeId={nodeId}, laneIndex={laneIndex}, isDisplacedLane={isDisplacedLane}, farDirection={farDirection}");
                         }
 
-                        foreach (var connectionsBySegment in LaneConnectionManager.Instance.GetLaneConnections(laneId, startNode)
+                        foreach (var connectionsBySegment in LaneConnection.LaneConnectionManager.Instance.GetLaneConnections(laneId, startNode)
                                                                 .GroupBy(l => l.ToLane().m_segment)) {
 
                             var otherSegmentId = connectionsBySegment.Key;
