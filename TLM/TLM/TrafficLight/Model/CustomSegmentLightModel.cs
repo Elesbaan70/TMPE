@@ -7,14 +7,14 @@ using TrafficManager.API.Traffic.Enums;
 namespace TrafficManager.TrafficLight.Model {
     internal class CustomSegmentLightModel {
 
-        public SegmentLightGroup Key { get; set; }
+        public SegmentLightGroup Key;
 
-        public LightMode CurrentMode { get; set; }
+        public LightMode CurrentMode;
 
-        public RoadBaseAI.TrafficLightState LightLeft { get; set; }
+        public RoadBaseAI.TrafficLightState LightLeft;
 
-        public RoadBaseAI.TrafficLightState LightMain { get; set; }
+        public RoadBaseAI.TrafficLightState LightMain;
 
-        public RoadBaseAI.TrafficLightState LightRight { get; set; }
+        public RoadBaseAI.TrafficLightState LightRight;
     }
 }

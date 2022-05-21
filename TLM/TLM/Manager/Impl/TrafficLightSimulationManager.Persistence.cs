@@ -20,6 +20,7 @@ namespace TrafficManager.Manager.Impl {
             public enum TtlFeature {
 
                 None = 0,
+                LaneGrouping,
             }
 
             public override Type DependencyTarget => typeof(TrafficLightSimulationManager);
@@ -69,7 +70,7 @@ namespace TrafficManager.Manager.Impl {
 #if DEBUGLOAD
                             Log._Debug($"Loading timed step {step} at node {ttlNodeId}");
 #endif
-                            LoadStep(stepElement, ttlNodeId);
+                            LoadStep(stepElement, ttlNodeId, featuresRequired);
                             ++step;
                         }
                     }
@@ -105,7 +106,7 @@ namespace TrafficManager.Manager.Impl {
                 return result;
             }
 
-            private static void LoadStep(XElement stepElement, ushort ttlNodeId) {
+            private static void LoadStep(XElement stepElement, ushort ttlNodeId, ICollection<TtlFeature> featuresRequired) {
 
                 TimedTrafficLightsStep step =
                     Instance.TrafficLightSimulations[ttlNodeId].timedLight.AddStep(
@@ -115,11 +116,11 @@ namespace TrafficManager.Manager.Impl {
                         stepElement.Attribute<float>(nameof(ITimedTrafficLightsStepModel.WaitFlowBalance)));
 
                 foreach (var segLightsElement in stepElement.Elements(segLightsElementName)) {
-                    LoadSegLights(segLightsElement, step);
+                    LoadSegLights(segLightsElement, step, featuresRequired);
                 }
             }
 
-            private static void LoadSegLights(XElement segLightsElement, TimedTrafficLightsStep step) {
+            private static void LoadSegLights(XElement segLightsElement, TimedTrafficLightsStep step, ICollection<TtlFeature> featuresRequired) {
 
                 var segmentId = segLightsElement.Attribute<ushort>(nameof(ICustomSegmentLightsModel.SegmentId));
                 ref NetSegment netSegment = ref segmentId.ToSegment();
@@ -145,7 +146,7 @@ namespace TrafficManager.Manager.Impl {
 
                         bool first = true; // v1.10.2 transitional code (dark arts that no one understands)
                         foreach (var lightElement in segLightsElement.Elements(lightElementName)) {
-                            LoadLight(lightElement, lights, ref first);
+                            LoadLight(lightElement, lights, ref first, featuresRequired);
                         }
                     } else {
 #if DEBUGLOAD
@@ -160,10 +161,13 @@ namespace TrafficManager.Manager.Impl {
                 }
             }
 
-            private static void LoadLight(XElement lightElement, CustomSegmentLights lights, ref bool first) {
+            private static void LoadLight(XElement lightElement, CustomSegmentLights lights, ref bool first, ICollection<TtlFeature> featuresRequired) {
 
                 var key = new SegmentLightGroup {
                     VehicleType = lightElement.Attribute<ExtVehicleType>(nameof(CustomSegmentLightModel.Key.VehicleType)),
+                    LaneEndFlags = featuresRequired.Contains(TtlFeature.LaneGrouping)
+                                    ? lightElement.Attribute<LaneEndFlags>(nameof(CustomSegmentLightModel.Key.LaneEndFlags))
+                                    : default,
                 };
 
 #if DEBUGLOAD
@@ -342,7 +346,7 @@ namespace TrafficManager.Manager.Impl {
                         // add steps to the saved ttl
 
                         for (var stepIndex = 0; stepIndex < timedNodeImpl.NumSteps(); stepIndex++) {
-                            SaveStep(ttlNodeElement, timedNodeImpl.GetStep(stepIndex));
+                            SaveStep(ttlNodeElement, timedNodeImpl.GetStep(stepIndex), featuresRequired, featuresForbidden);
                         }
                     }
                     catch (Exception e) {
@@ -355,7 +359,7 @@ namespace TrafficManager.Manager.Impl {
                 return result;
             }
 
-            private static void SaveStep(XElement ttlNodeElement, ITimedTrafficLightsStepModel timedStep) {
+            private static void SaveStep(XElement ttlNodeElement, ITimedTrafficLightsStepModel timedStep, ICollection<TtlFeature> featuresRequired, ICollection<TtlFeature> featuresForbidden) {
 
                 var stepElement = new XElement(stepElementName);
 
@@ -367,11 +371,11 @@ namespace TrafficManager.Manager.Impl {
                 ttlNodeElement.Add(stepElement);
 
                 foreach (var segLights in timedStep.EnumerateCustomSegmentLights()) {
-                    SaveSegLights(stepElement, segLights);
+                    SaveSegLights(stepElement, segLights, featuresRequired, featuresForbidden);
                 }
             }
 
-            private static void SaveSegLights(XElement stepElement, ICustomSegmentLightsModel segLights) {
+            private static void SaveSegLights(XElement stepElement, ICustomSegmentLightsModel segLights, ICollection<TtlFeature> featuresRequired, ICollection<TtlFeature> featuresForbidden) {
 
                 var segLightsElement = new XElement(segLightsElementName);
 
@@ -389,10 +393,18 @@ namespace TrafficManager.Manager.Impl {
                 foreach (var segLight in segLights) {
 
                     if (segLight.Key.HasExtendedGrouping()) {
-                        var keyOnVehicleType = new SegmentLightGroup(segLight.Key.VehicleType);
-                        if (segLights.Any(l => l.Key == keyOnVehicleType)) {
-                            // there is a light for this vehicle type with no flags, so we'll skip this one
-                            continue;
+
+                        if (featuresForbidden.Contains(TtlFeature.LaneGrouping)) {
+
+                            var keyOnVehicleType = new SegmentLightGroup(segLight.Key.VehicleType);
+                            if (segLights.Any(l => l.Key == keyOnVehicleType)) {
+                                // there is a light for this vehicle type with no flags, so we'll skip this one
+                                continue;
+                            }
+
+                            segLight.Key.LaneEndFlags = default;
+                        } else {
+                            featuresRequired.Add(TtlFeature.LaneGrouping);
                         }
                     }
 
@@ -405,6 +417,7 @@ namespace TrafficManager.Manager.Impl {
                 var lightElement = new XElement(lightElementName);
 
                 lightElement.AddAttribute(nameof(segLight.Key.VehicleType), segLight.Key.VehicleType);
+                lightElement.AddAttribute(nameof(segLight.Key.LaneEndFlags), segLight.Key.LaneEndFlags);
 
                 lightElement.AddAttribute(nameof(segLight.CurrentMode), segLight.CurrentMode);
                 lightElement.AddAttribute(nameof(segLight.LightLeft), segLight.LightLeft);
