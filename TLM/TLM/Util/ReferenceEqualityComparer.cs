@@ -6,10 +6,18 @@ using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace TrafficManager.Util {
-    public sealed class ReferenceEqualityComparer<T> : IEqualityComparer<T> {
-        public static readonly ReferenceEqualityComparer<T> Instance = new ReferenceEqualityComparer<T>();
+    internal sealed class ReferenceEqualityComparer<T> : IEqualityComparer<T>, IEqualityComparer {
+
+        public static ReferenceEqualityComparer<T> Instance { get; } = new ReferenceEqualityComparer<T>();
+
         private ReferenceEqualityComparer() { }
+
         public bool Equals(T x, T y) => ReferenceEquals(x, y);
+
         public int GetHashCode(T obj) => RuntimeHelpers.GetHashCode(obj);
+
+        bool IEqualityComparer.Equals(object x, object y) => ReferenceEquals(x, y);
+
+        int IEqualityComparer.GetHashCode(object obj) => RuntimeHelpers.GetHashCode(obj);
     }
 }
