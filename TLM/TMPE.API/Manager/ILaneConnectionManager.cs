@@ -1,3 +1,5 @@
+using System;
+
 namespace TrafficManager.API.Manager {
 
     public interface ILaneConnectionManager {
@@ -7,6 +9,8 @@ namespace TrafficManager.API.Manager {
         public delegate void ConnectionsChangedEventHandler(uint laneId, bool startNode);
 
         public event ConnectionsChangedEventHandler ConnectionsChanged;
+
+        public event Action GlobalConnectionsChanged;
 
         public NetInfo.LaneType LaneTypes { get; }
 

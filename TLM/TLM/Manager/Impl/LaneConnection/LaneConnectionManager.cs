@@ -1,4 +1,5 @@
 namespace TrafficManager.Manager.Impl.LaneConnection {
+    using System;
     using CSUtil.Commons;
     using System.Collections.Generic;
     using TrafficManager.API.Manager;
@@ -42,14 +43,22 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
 
         public event ILaneConnectionManager.ConnectionsChangedEventHandler ConnectionsChanged;
 
-        void IEventDispatcher.ConnectionsChanged(uint laneId, bool startNode) {
-            ConnectionsChanged?.Invoke(laneId, startNode);
-        }
+        public event Action GlobalConnectionsChanged;
+
+        void IEventDispatcher.ConnectionsChanged(uint laneId, bool startNode) => ConnectionsChanged?.Invoke(laneId, startNode);
+
+        void IEventDispatcher.GlobalConnectionsChanged() => GlobalConnectionsChanged?.Invoke();
 
         public override void OnBeforeLoadData() {
             base.OnBeforeLoadData();
             Sub.OnBeforeLoadData();
         }
+
+        public override void OnAfterLoadData() {
+            base.OnAfterLoadData();
+            Sub.OnAfterLoadData();
+        }
+
         public override void OnLevelUnloading() {
             base.OnLevelUnloading();
             Sub.OnLevelUnloading();
@@ -58,6 +67,10 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
         protected override void InternalPrintDebugInfo() {
             base.InternalPrintDebugInfo();
             Sub.PrintDebugInfo();
+        }
+
+        internal void OnLaneConnectorEnabledChanged() {
+            Sub.OnLaneConnectorEnabledChanged();
         }
 
         /// <summary>

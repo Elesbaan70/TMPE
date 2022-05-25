@@ -20,13 +20,13 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
         AbstractCustomManager,
           ICustomDataManager<List<Configuration.LaneConnection>>/*, ILaneConnectionManager*/ {
         private ConnectionDataBase connectionDataBase_;
-        private IEventDispatcher eventDispatcher;
+        private IEventDispatcher eventDispatcher_;
 
         [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "RAS0002:Readonly field for a non-readonly struct", Justification = "False alarm")]
         public readonly LaneEndTransitionGroup Group;
 
         internal LaneConnectionSubManager(LaneEndTransitionGroup group, IEventDispatcher eventDispatcher) {
-            this.eventDispatcher = eventDispatcher;
+            this.eventDispatcher_ = eventDispatcher;
             Group = group;
             NetManagerEvents.Instance.ReleasingSegment += ReleasingSegment;
         }
@@ -38,10 +38,20 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
             base.OnBeforeLoadData();
             connectionDataBase_ = new ConnectionDataBase();
         }
+
+        public override void OnAfterLoadData() {
+            base.OnAfterLoadData();
+
+            if (!Options.laneConnectorEnabled)
+                eventDispatcher_.GlobalConnectionsChanged();
+        }
+
         public override void OnLevelUnloading() {
             base.OnLevelUnloading();
             connectionDataBase_ = null;
         }
+
+        internal void OnLaneConnectorEnabledChanged() => eventDispatcher_.GlobalConnectionsChanged();
 
         protected override void InternalPrintDebugInfo() {
             base.InternalPrintDebugInfo();
@@ -64,7 +74,7 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
         /// </summary>
         /// <param name="sourceStartNode">check at start node of source lane?</param>
         public bool AreLanesConnected(uint sourceLaneId, uint targetLaneId, bool sourceStartNode) {
-            if (!Options.laneConnectorEnabled) {
+            if (!(Options.laneConnectorEnabled || TMPELifecycle.Instance.Deserializing)) {
                 return true;
             }
 
@@ -99,7 +109,7 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
         }
 
         public bool HasOutgoingConnections(uint sourceLaneId) {
-            if (!Options.laneConnectorEnabled) {
+            if (!(Options.laneConnectorEnabled || TMPELifecycle.Instance.Deserializing)) {
                 return false;
             }
 
@@ -111,14 +121,15 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
         /// Performance note: This act as HasOutgoingConnections for uni-directional lanes but faster
         /// </summary>
         public bool HasConnections(uint laneId, bool startNode) =>
-            Options.laneConnectorEnabled && connectionDataBase_.ContainsKey(new LaneEnd(laneId, startNode));
+            (Options.laneConnectorEnabled || TMPELifecycle.Instance.Deserializing)
+                && connectionDataBase_.ContainsKey(new LaneEnd(laneId, startNode));
 
         /// <summary>
         /// Determines if the given lane has outgoing connections
         /// Performance note: This act as HasOutgoingConnections for uni-directional lanes but faster
         /// </summary>
         public bool HasOutgoingConnections(uint sourceLaneId, bool startNode) {
-            if (!Options.laneConnectorEnabled) {
+            if (!(Options.laneConnectorEnabled || TMPELifecycle.Instance.Deserializing)) {
                 return false;
             }
 
@@ -137,7 +148,7 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
         /// Determines if there exist custom lane connections at the specified node
         /// </summary>
         public bool HasNodeConnections(ushort nodeId) {
-            if (!Options.laneConnectorEnabled) {
+            if (!(Options.laneConnectorEnabled || TMPELifecycle.Instance.Deserializing)) {
                 return false;
             }
 
@@ -161,7 +172,7 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
 
         // Note: Not performance critical
         public bool HasUturnConnections(ushort segmentId, bool startNode) {
-            if (!Options.laneConnectorEnabled) {
+            if (!(Options.laneConnectorEnabled || TMPELifecycle.Instance.Deserializing)) {
                 return false;
             }
 
@@ -188,7 +199,7 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
         /// Note: Not performance critical
         /// </summary>
         internal uint[] GetLaneConnections(uint laneId, bool startNode) {
-            if (!Options.laneConnectorEnabled) {
+            if (!(Options.laneConnectorEnabled || TMPELifecycle.Instance.Deserializing)) {
                 return null;
             }
 
@@ -244,8 +255,8 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
                 RecalculateLaneArrows(sourceLaneId, nodeId, sourceStartNode);
             }
 
-            eventDispatcher.ConnectionsChanged(sourceLaneId, sourceStartNode);
-            eventDispatcher.ConnectionsChanged(targetLaneId, targetSegmentId.ToSegment().IsStartNode(nodeId));
+            eventDispatcher_.ConnectionsChanged(sourceLaneId, sourceStartNode);
+            eventDispatcher_.ConnectionsChanged(targetLaneId, targetSegmentId.ToSegment().IsStartNode(nodeId));
 
             ref NetNode node = ref nodeId.ToNode();
             RoutingManager.Instance.RequestNodeRecalculation(ref node);
@@ -314,7 +325,7 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
             LaneEnd key = new(laneId, startNode);
             connectionDataBase_.Remove(key);
 
-            eventDispatcher.ConnectionsChanged(laneId, startNode);
+            eventDispatcher_.ConnectionsChanged(laneId, startNode);
 
             if (recalcAndPublish) {
                 ushort segment = laneId.ToLane().m_segment;
@@ -364,8 +375,8 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
 
             RecalculateLaneArrows(sourceLaneId, nodeId, sourceStartNode);
 
-            eventDispatcher.ConnectionsChanged(sourceLaneId, sourceStartNode);
-            eventDispatcher.ConnectionsChanged(targetLaneId, targetSegmentId.ToSegment().IsStartNode(nodeId));
+            eventDispatcher_.ConnectionsChanged(sourceLaneId, sourceStartNode);
+            eventDispatcher_.ConnectionsChanged(targetLaneId, targetSegmentId.ToSegment().IsStartNode(nodeId));
 
             if (sourceSegmentId == targetSegmentId) {
                 JunctionRestrictionsManager.Instance.SetUturnAllowed(

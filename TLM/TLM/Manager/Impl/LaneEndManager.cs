@@ -31,6 +31,7 @@ namespace TrafficManager.Manager.Impl {
 
             NetManagerEvents.Instance.ReleasedLane += ReleasedLane;
             LaneConnection.LaneConnectionManager.Instance.ConnectionsChanged += ConnectionsChanged;
+            LaneConnection.LaneConnectionManager.Instance.GlobalConnectionsChanged += GlobalConnectionsChanged;
         }
 
         public static LaneEndManager Instance { get; }
@@ -41,6 +42,10 @@ namespace TrafficManager.Manager.Impl {
 
         public override void OnLevelUnloading() {
             base.OnLevelUnloading();
+            ResetAll();
+        }
+
+        private void ResetAll() {
             for (uint laneid = 1; laneid < NetManager.MAX_LANE_COUNT; laneid++) {
                 this[laneid, false].Reset(laneid, false);
                 this[laneid, true].Reset(laneid, true);
@@ -73,6 +78,8 @@ namespace TrafficManager.Manager.Impl {
         }
 
         private void ConnectionsChanged(uint laneId, bool startNode) => this[laneId, startNode].Reset(laneId, startNode);
+
+        private void GlobalConnectionsChanged() => ResetAll();
 
         private struct LaneEnd {
             /// <summary>

@@ -171,7 +171,7 @@ namespace TrafficManager.Manager.Impl {
                 };
 
 #if DEBUGLOAD
-                Log._Debug($"Loading light: vehicleType={vehicleType}");
+                Log._Debug($"Loading light: {key}");
 #endif
 
                 if (!lights.CustomLights.TryGetValue(
@@ -181,7 +181,7 @@ namespace TrafficManager.Manager.Impl {
                     // BEGIN dark arts that no one understands
                     // TODO learn the dark arts
 #if DEBUGLOAD
-                    Log._Debug($"No segment light found for vehicleType {vehicleType}");
+                    Log._Debug($"No segment light found for {key}");
 #endif
                     // v1.10.2 transitional code START
                     if (first) {

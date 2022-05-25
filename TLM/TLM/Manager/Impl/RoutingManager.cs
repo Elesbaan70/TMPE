@@ -22,7 +22,9 @@ namespace TrafficManager.Manager.Impl {
     {
         public static readonly RoutingManager Instance = new ();
 
-        private RoutingManager() { }
+        private RoutingManager() {
+            LaneConnectionManager.Instance.GlobalConnectionsChanged += GlobalConnectionsChanged;
+        }
 
         public const NetInfo.LaneType ROUTED_LANE_TYPES =
             NetInfo.LaneType.Vehicle | NetInfo.LaneType.TransportVehicle;
@@ -106,6 +108,10 @@ namespace TrafficManager.Manager.Impl {
             }
 
             Log._Debug(buf);
+        }
+
+        private void GlobalConnectionsChanged() {
+            RequestFullRecalculation();
         }
 
         public void SimulationStep() {

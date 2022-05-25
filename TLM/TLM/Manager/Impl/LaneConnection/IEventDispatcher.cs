@@ -7,5 +7,7 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
     internal interface IEventDispatcher {
 
         void ConnectionsChanged(uint laneId, bool startNode);
+
+        void GlobalConnectionsChanged();
     }
 }

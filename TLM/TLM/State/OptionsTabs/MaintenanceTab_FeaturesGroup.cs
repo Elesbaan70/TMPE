@@ -94,7 +94,7 @@ namespace TrafficManager.State {
 
         private static void OnLaneConnectorEnabledChanged(bool _) {
             OptionsManager.RebuildMenu();
-            OptionsManager.UpdateRoutingManager();
+            OptionsManager.NotifyLaneConnectorEnabledChanged();
         }
     }
 }

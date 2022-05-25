@@ -399,5 +399,11 @@ namespace TrafficManager.Manager.Impl {
                 RoutingManager.Instance.RequestFullRecalculation();
             }
         }
+
+        /// <summary>
+        /// When lane connection feature is toggled, LaneConnectionManager needs to invoke
+        /// event to notify its consumers.
+        /// </summary>
+        internal static void NotifyLaneConnectorEnabledChanged() => LaneConnection.LaneConnectionManager.Instance.OnLaneConnectorEnabledChanged();
     }
 }
