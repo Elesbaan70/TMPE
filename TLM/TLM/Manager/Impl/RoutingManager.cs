@@ -411,6 +411,7 @@ namespace TrafficManager.Manager.Impl {
             ref NetSegment prevSegment = ref prevSegmentId.ToSegment();
             NetInfo prevSegmentInfo = prevSegment.Info;
             bool prevSegIsInverted = (prevSegment.m_flags & NetSegment.Flags.Invert) != NetSegment.Flags.None;
+            bool prevSegHasDisplaced = prevSegmentInfo.HasDisplacedLanes();
 
             IExtSegmentEndManager segEndMan = Constants.ManagerFactory.ExtSegmentEndManager;
             ExtSegment prevExtSegment = Constants.ManagerFactory.ExtSegmentManager.ExtSegments[prevSegmentId];
@@ -597,10 +598,13 @@ namespace TrafficManager.Manager.Impl {
                 bool isNodeStartNodeOfNextSegment = nextSegment.m_startNode == nodeId;
 
                 NetInfo nextSegmentInfo = nextSegment.Info;
+                bool nextSegHasDisplaced = nextSegmentInfo.HasDisplacedLanes();
                 bool nextSegIsInverted =
                     (nextSegment.m_flags & NetSegment.Flags.Invert) !=
                     NetSegment.Flags.None;
                 uint nextFirstLaneId = nextSegment.m_lanes;
+
+                bool isContinuingDisplaced = prevSegHasDisplaced && nextSegHasDisplaced;
 
                 bool nextIsHighway =
                     Constants.ManagerFactory.ExtSegmentManager.CalculateIsHighway(nextSegmentId);
@@ -966,7 +970,15 @@ namespace TrafficManager.Manager.Impl {
                                         }
 
                                         isCompatibleLane = true;
-                                        transitionType = LaneEndTransitionType.Default;
+
+                                        if (isContinuingDisplaced
+                                                && (prevSegmentInfo.IsDisplacedLane(prevLaneIndex) != nextSegmentInfo.IsDisplacedLane(nextLaneIndex)
+                                                    || prevSegmentId == nextSegmentId))
+                                                {
+                                            transitionType = LaneEndTransitionType.Invalid;
+                                        }
+                                        else
+                                            transitionType = LaneEndTransitionType.Default;
                                     } else {
                                         // check for lane arrows
                                         LaneArrows nextLaneArrows =
@@ -995,8 +1007,8 @@ namespace TrafficManager.Manager.Impl {
                                         }
 
                                         bool hasUTurnRule = JunctionRestrictionsManager.Instance.IsUturnAllowed(
-                                            nextSegmentId,
-                                            isNodeStartNodeOfNextSegment);
+                                                    nextSegmentId,
+                                                    isNodeStartNodeOfNextSegment);
                                         bool hasFarTurnArrow = (Shortcuts.LHT && hasRightArrow) || (Shortcuts.RHT && hasLeftArrow);
                                         bool canTurn = !nodeIsRealJunction || nodeIsEndOrOneWayOut || hasFarTurnArrow || hasUTurnRule;
 
@@ -2016,7 +2028,7 @@ namespace TrafficManager.Manager.Impl {
                                     // force u-turns to happen on the innermost lane
                                     ++compatibleLaneDist;
                                     nextCompatibleTransitionDatas[nextTransitionIndex].type =
-                                        LaneEndTransitionType.Relaxed;
+                                        isContinuingDisplaced ? LaneEndTransitionType.Invalid : LaneEndTransitionType.Relaxed;
 
                                     if (extendedLogRouting) {
                                         Log._DebugFormat(
