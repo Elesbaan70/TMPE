@@ -1022,21 +1022,41 @@ namespace TrafficManager.Manager.Impl {
                                             (nextIncomingDir == ArrowDirection.Left && hasRightArrow) || // valid incoming left
                                             (nextIncomingDir == ArrowDirection.Forward && hasForwardArrow) || // valid incoming straight
                                             (nextIncomingDir == ArrowDirection.Turn && canTurn) /*valid turning lane*/) {
-                                            if (extendedLogRouting) {
-                                                Log._DebugFormat(
-                                                    "RoutingManager.RecalculateLaneEndRoutingData({0}, {1}, " +
-                                                    "{2}, {3}): lane arrow check passed for nextLaneId={4}, " +
-                                                    "idx={5}. adding as default lane.",
-                                                    prevSegmentId,
-                                                    prevLaneIndex,
-                                                    prevLaneId,
-                                                    isNodeStartNodeOfPrevSegment,
-                                                    nextLaneId,
-                                                    nextLaneIndex);
-                                            }
 
                                             isCompatibleLane = true;
-                                            transitionType = LaneEndTransitionType.Default;
+
+                                            if (isContinuingDisplaced
+                                                && ((nextIncomingDir == ArrowDirection.Forward
+                                                        && prevSegmentInfo.IsDisplacedLane(prevLaneIndex) != nextSegmentInfo.IsDisplacedLane(nextLaneIndex))
+                                                    || nextIncomingDir == ArrowDirection.Turn)) {
+
+                                                if (extendedLogRouting) {
+                                                    Log._DebugFormat(
+                                                        "RoutingManager.RecalculateLaneEndRoutingData({0}, {1}, " +
+                                                        "{2}, {3}): nextLaneId={4} idx={5} fails displaced lane rules. adding as relaxed.",
+                                                        prevSegmentId,
+                                                        prevLaneIndex,
+                                                        prevLaneId,
+                                                        isNodeStartNodeOfPrevSegment,
+                                                        nextLaneId,
+                                                        nextLaneIndex);
+                                                }
+                                                transitionType = LaneEndTransitionType.Relaxed;
+                                            } else {
+                                                if (extendedLogRouting) {
+                                                    Log._DebugFormat(
+                                                        "RoutingManager.RecalculateLaneEndRoutingData({0}, {1}, " +
+                                                        "{2}, {3}): lane arrow check passed for nextLaneId={4}, " +
+                                                        "idx={5}. adding as default lane.",
+                                                        prevSegmentId,
+                                                        prevLaneIndex,
+                                                        prevLaneId,
+                                                        isNodeStartNodeOfPrevSegment,
+                                                        nextLaneId,
+                                                        nextLaneIndex);
+                                                }
+                                                transitionType = LaneEndTransitionType.Default;
+                                            }
                                         } else if (connected) {
                                             if (extendedLogRouting) {
                                                 Log._DebugFormat(
@@ -2033,7 +2053,9 @@ namespace TrafficManager.Manager.Impl {
                                     // force u-turns to happen on the innermost lane
                                     ++compatibleLaneDist;
                                     nextCompatibleTransitionDatas[nextTransitionIndex].type =
-                                        isContinuingDisplaced ? LaneEndTransitionType.Invalid : LaneEndTransitionType.Relaxed;
+                                        (isContinuingDisplaced && !nodeIsJunction)
+                                            ? LaneEndTransitionType.Invalid
+                                            : LaneEndTransitionType.Relaxed;
 
                                     if (extendedLogRouting) {
                                         Log._DebugFormat(
