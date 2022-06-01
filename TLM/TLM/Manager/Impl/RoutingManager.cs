@@ -962,23 +962,28 @@ namespace TrafficManager.Manager.Impl {
                                             transitionType = LaneEndTransitionType.Default;
                                         }
                                     } else if (!nodeIsJunction) {
-                                        if (extendedLogRouting) {
-                                            Log._Debug(
-                                                $"RoutingManager.RecalculateLaneEndRoutingData({prevSegmentId}, " +
-                                                $"{prevLaneIndex}, {prevLaneId}, {isNodeStartNodeOfPrevSegment}): nextLaneId={nextLaneId}, " +
-                                                $"idx={nextLaneIndex} is not a junction. adding as Default.");
-                                        }
-
                                         isCompatibleLane = true;
 
                                         if (isContinuingDisplaced
                                                 && (prevSegmentInfo.IsDisplacedLane(prevLaneIndex) != nextSegmentInfo.IsDisplacedLane(nextLaneIndex)
-                                                    || prevSegmentId == nextSegmentId))
-                                                {
+                                                    || prevSegmentId == nextSegmentId)) {
+
+                                            if (extendedLogRouting) {
+                                                Log._Debug(
+                                                    $"RoutingManager.RecalculateLaneEndRoutingData({prevSegmentId}, " +
+                                                    $"{prevLaneIndex}, {prevLaneId}, {isNodeStartNodeOfPrevSegment}): nextLaneId={nextLaneId}, " +
+                                                    $"idx={nextLaneIndex} is across a median (displaced lanes). adding as Invalid.");
+                                            }
                                             transitionType = LaneEndTransitionType.Invalid;
-                                        }
-                                        else
+                                        } else {
+                                            if (extendedLogRouting) {
+                                                Log._Debug(
+                                                    $"RoutingManager.RecalculateLaneEndRoutingData({prevSegmentId}, " +
+                                                    $"{prevLaneIndex}, {prevLaneId}, {isNodeStartNodeOfPrevSegment}): nextLaneId={nextLaneId}, " +
+                                                    $"idx={nextLaneIndex} is not a junction. adding as Default.");
+                                            }
                                             transitionType = LaneEndTransitionType.Default;
+                                        }
                                     } else {
                                         // check for lane arrows
                                         LaneArrows nextLaneArrows =
