@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -47,6 +47,12 @@
       <HintPath>$(MangedDLLPath)\Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="CitiesHarmony.API, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\CitiesHarmony.API.2.0.0\lib\net35\CitiesHarmony.API.dll</HintPath>
+    </Reference>
+    <Reference Include="CitiesHarmony.Harmony, Version=2.0.4.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\CitiesHarmony.Harmony.2.0.4\lib\net35\CitiesHarmony.Harmony.dll</HintPath>
+    </Reference>
     <Reference Include="ColossalManaged">
       <HintPath>$(MangedDLLPath)\ColossalManaged.dll</HintPath>
       <Private>False</Private>
@@ -81,9 +87,14 @@
     <Compile Include="Core\ReferenceEqualityComparer.cs" />
     <Compile Include="GameObjects\ExtNetInfo.cs" />
     <Compile Include="GameObjects\ExtNetInfo.LaneInspector.cs" />
+    <Compile Include="GameObjects\ExtNetLane.cs" />
+    <Compile Include="GameObjects\ExtNetManager.cs" />
+    <Compile Include="GameObjects\ExtNetSegment.cs" />
     <Compile Include="GameObjects\ExtPrefabInfo.cs" />
     <Compile Include="GameObjects\FlagExtensions.cs" />
     <Compile Include="GameObjects\NetInfoExtensions.cs" />
+    <Compile Include="GameObjects\NetLaneGroup.cs" />
+    <Compile Include="LoadingExtension.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup />
