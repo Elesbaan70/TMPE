@@ -62,6 +62,12 @@ namespace CSModLib.GameObjects {
             /// </summary>
             ForbidControlledLanes = 1 << 9,
 
+            /// <summary>
+            /// Driving lanes on the road surface. This is currently the only lane category that gets grouped,
+            /// but code that uses lane grouping always needs to check for this flag.
+            /// </summary>
+            RoadSurface = 1 << 10,
+
             OuterForward = Outer | ForwardGroup,
             InnerForward = Inner | ForwardGroup,
             DisplacedInnerForward = DisplacedInner | ForwardGroup,
@@ -227,6 +233,8 @@ namespace CSModLib.GameObjects {
                             m_extFlags |= ExtLaneFlags.ForwardGroup | ExtLaneFlags.BackwardGroup;
                             break;
                     }
+
+                    m_extFlags |= ExtLaneFlags.RoadSurface;
                 }
             }
         }

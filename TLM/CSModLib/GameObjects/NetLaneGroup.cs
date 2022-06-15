@@ -25,6 +25,65 @@ namespace CSModLib.GameObjects {
         [ThreadStatic]
         private static uint[] idCollection;
 
+        public static ref NetLaneGroup Of(uint laneGroupId) => ref ExtNetManager.Instance.GetLaneGroup(laneGroupId);
+
+        public uint GetLeftLaneGroup(ushort nodeId) {
+            ref var segment = ref ExtNetManager.Instance.segments[m_segment];
+            bool startNode = segment.m_startNode == nodeId;
+            return startNode || segment.m_endNode == nodeId ? GetNextLaneGroup(startNode, nodeId, true) : 0;
+        }
+
+        public uint GetLeftLaneGroup(bool startNode) {
+            ref var segment = ref ExtNetSegment.NetSegmentOf(m_segment);
+            return GetNextLaneGroup(startNode, startNode ? segment.m_startNode : segment.m_endNode, true);
+        }
+
+        public uint GetRightLaneGroup(ushort nodeId) {
+            ref var segment = ref ExtNetSegment.NetSegmentOf(m_segment);
+            bool startNode = segment.m_startNode == nodeId;
+            return startNode || segment.m_endNode == nodeId ? GetNextLaneGroup(startNode, nodeId, false) : 0;
+        }
+
+        public uint GetRightLaneGroup(bool startNode) {
+            ref var segment = ref ExtNetSegment.NetSegmentOf(m_segment);
+            return GetNextLaneGroup(startNode, startNode ? segment.m_startNode : segment.m_endNode, false);
+        }
+
+        private uint GetNextLaneGroup(bool startNode, ushort nodeId, bool left) {
+            if (startNode ^ left) {
+                if (m_prevLaneGroup != 0)
+                    return m_prevLaneGroup;
+            } else {
+                if (m_nextLaneGroup != 0)
+                    return m_nextLaneGroup;
+            }
+
+            var segments = ExtNetManager.Instance.segments;
+            var extSegments = ExtNetManager.Instance.extSegments;
+
+            var segmentId = startNode
+                            ? (left ? segments[m_segment].m_startLeftSegment : segments[m_segment].m_startRightSegment)
+                            : (left ? segments[m_segment].m_endLeftSegment : segments[m_segment].m_endRightSegment);
+            do {
+                ref var segment = ref segments[segmentId];
+                startNode = nodeId == segment.m_startNode;
+                ref var extSegment = ref extSegments[segmentId];
+                if (startNode ^ left) {
+                    if (extSegment.m_lastLaneGroup != 0)
+                        return extSegment.m_lastLaneGroup;
+                } else {
+                    if (extSegment.m_laneGroup0 != 0)
+                        return extSegment.m_laneGroup0;
+                }
+
+                segmentId = startNode
+                            ? (left ? segment.m_startLeftSegment : segment.m_startRightSegment)
+                            : (left ? segment.m_endLeftSegment : segment.m_endRightSegment);
+            } while (segmentId != m_segment);
+
+            return m_laneGroup;
+        }
+
         public uint GetLaneId(int laneIndex) {
             switch (laneIndex) {
                 case < 0: return 0;

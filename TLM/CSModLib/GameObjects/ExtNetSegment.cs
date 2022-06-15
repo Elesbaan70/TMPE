@@ -1,3 +1,4 @@
+using HarmonyLib;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,8 +37,45 @@ namespace CSModLib.GameObjects {
 
         public uint m_lastLaneGroup;
 
+        /// <summary>
+        /// The segment's angle from <see cref="NetSegment.m_startNode"/>,
+        /// relative to <c>new <see cref="Vector3"/>(0, 0, -1)</c>,
+        /// for quick relative lane direction math.
+        /// </summary>
+        public int m_startAngle;
+
+        /// <summary>
+        /// The segment's angle from <see cref="NetSegment.m_endNode"/>,
+        /// relative to <c>new <see cref="Vector3"/>(0, 0, -1)</c>,
+        /// for quick relative lane direction math.
+        /// </summary>
+        public int m_endAngle;
+
         [ThreadStatic]
         private static uint[] idCollection;
+
+        public static ref ExtNetSegment Of(ushort id) => ref ExtNetManager.Instance.GetExtSegment(id);
+
+        public static ref NetSegment NetSegmentOf(ushort id) => ref ExtNetManager.Instance.segments[id];
+
+        public int GetAngle(bool startNode) => startNode ? m_startAngle : m_endAngle;
+
+        public int GetAngleTo(bool startNode, int targetAngle) {
+            return (targetAngle - (startNode ? m_startAngle : m_endAngle) + 360) % 360 - 180;
+        }
+
+        public ushort StartNode =>
+            ExtNetManager.Instance.segments[m_segment].m_startNode;
+
+        public ushort EndNode =>
+            ExtNetManager.Instance.segments[m_segment].m_endNode;
+
+        public ref NetSegment NetSegment => ref ExtNetManager.Instance.segments[m_segment];
+
+        public int GetAngleTo(bool startNode, ushort targetSegmentId) {
+            var targetAngle = Of(targetSegmentId).GetAngle(NetSegmentOf(targetSegmentId).m_startNode == NetSegment.m_startNode);
+            return GetAngleTo(startNode, targetAngle);
+        }
 
         public uint GetLaneId(int laneIndex) {
             switch (laneIndex) {
@@ -93,6 +131,18 @@ namespace CSModLib.GameObjects {
 
             InitLanes(extNetManager, segment, extInfo);
             InitLaneGroups(extNetManager, extInfo);
+            InitAngles(segment);
+        }
+
+        private void InitAngles(NetSegment segment) {
+
+            Vector3 referenceDirection = new Vector3(0, 0, -1);
+
+            var segmentDirection = segment.m_startDirection;
+            m_startAngle = (int)(Vector3.Angle(referenceDirection, segmentDirection) * Math.Sign(segmentDirection.x) + .5f);
+
+            segmentDirection = segment.m_endDirection;
+            m_endAngle = (int)(Vector3.Angle(referenceDirection, segmentDirection) * Math.Sign(segmentDirection.x) + .5f);
         }
 
         private void InitLanes(ExtNetManager extNetManager, NetSegment segment, ExtNetInfo extInfo) {
@@ -179,6 +229,20 @@ namespace CSModLib.GameObjects {
             m_laneGroup1 = idCollection[1];
             m_laneGroup2 = idCollection[2];
             m_laneGroup3 = idCollection[3];
+        }
+
+        [HarmonyPatch(typeof(NetSegment))]
+        private class NetSegmentPatch {
+
+            [HarmonyPostfix]
+            [HarmonyPatch(
+                "CalculateSegment",
+                new[] { typeof(ushort) },
+                new[] { ArgumentType.Normal }
+            )]
+            internal void CalculateSegment(ushort segmentID) {
+                ExtNetManager.Instance.UpdateSegment(segmentID, false, true);
+            }
         }
     }
 }
