@@ -216,6 +216,8 @@ namespace TrafficManager.Manager.Impl {
 
                 ToCheckbox(data, idx: 60, PoliciesTab_OnHighwaysGroup.HighwayMergingRules, false);
 
+                ToCheckbox(data, idx: 61, GameplayTab_AIGroups.AdvancedRouting, TMPELifecycle.IsNewGame);
+
                 Options.Available = true;
                 return true;
             }
@@ -235,7 +237,7 @@ namespace TrafficManager.Manager.Impl {
         public byte[] SaveData(ref bool success) {
 
             // Remember to update this when adding new options (lastIdx + 1)
-            var save = new byte[61];
+            var save = new byte[62];
 
             try {
                 save[0] = GeneralTab_SimulationGroup.SimulationAccuracy.Save();
@@ -306,6 +308,8 @@ namespace TrafficManager.Manager.Impl {
                 save[59] = OverlaysTab_OverlaysGroup.ShowDefaultSpeedSubIcon.Save();
 
                 save[60] = PoliciesTab_OnHighwaysGroup.HighwayMergingRules.Save();
+
+                save[61] = (byte)(Options.advancedRouting ? 1 : 0);
 
                 return save;
             }

@@ -79,6 +79,7 @@ namespace TrafficManager.State {
         public static bool automaticallyAddTrafficLightsIfApplicable;
         public static bool NoDoubleCrossings;
         public static bool DedicatedTurningLanes;
+        public static bool advancedRouting;
 
         public static bool showLanes = VersionUtil.IS_DEBUG;
 

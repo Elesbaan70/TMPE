@@ -24,6 +24,14 @@ namespace TrafficManager.State {
                 Handler = OnAltLaneSelectionRatioChanged,
             };
 
+        // Advanced Routing group
+
+        public static CheckboxOption AdvancedRouting =
+            new CheckboxOption(nameof(Options.advancedRouting), Options.PersistTo.Savegame) {
+                Label = "Gameplay.Checkbox:Enable advanced lane routing",
+                Handler = OnAdvancedRoutingChanged,
+            };
+
         // Parking AI group
 
         public static CheckboxOption ParkingAI =
@@ -49,6 +57,10 @@ namespace TrafficManager.State {
             AltLaneSelectionRatio.AddUI(group)
                 .ReadOnly = !TMPELifecycle.PlayMode;
 
+            group = tab.AddGroup(T("Gameplay.Group:Advanced lane routing"));
+
+            AdvancedRouting.AddUI(group);
+
             group = tab.AddGroup(T("Gameplay.Group:Parking AI"));
 
             ParkingAI.AddUI(group);
@@ -63,8 +75,10 @@ namespace TrafficManager.State {
         private static void OnAdvancedAIChanged(bool _) {
             if (TMPELifecycle.Instance.Deserializing) return;
 
-            if (!Options.advancedAI)
+            if (!Options.advancedAI) {
                 AltLaneSelectionRatio.Value = 0;
+                AdvancedRouting.Value = false;
+            }
         }
 
         private static void OnAltLaneSelectionRatioChanged(float _) {
@@ -73,6 +87,13 @@ namespace TrafficManager.State {
             Options.altLaneSelectionRatio = AltLaneSelectionRatio.Save();
 
             if (Options.altLaneSelectionRatio > 0)
+                AdvancedAI.Value = true;
+        }
+
+        private static void OnAdvancedRoutingChanged(bool _) {
+            if (TMPELifecycle.Instance.Deserializing) return;
+
+            if (Options.advancedRouting)
                 AdvancedAI.Value = true;
         }
 
