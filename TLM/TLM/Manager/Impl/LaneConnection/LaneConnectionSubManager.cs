@@ -491,7 +491,7 @@ namespace TrafficManager.Manager.Impl.LaneConnection {
                 return;
             }
 
-            if (!Flags.CanHaveLaneArrows(laneId, startNode)) {
+            if (!LaneArrowManager.Instance.CanHaveLaneArrows(laneId, startNode)) {
                 if (logLaneConnections) {
                     Log._Debug($"LaneConnectionSubManager({Group}).RecalculateLaneArrows({laneId}, {nodeId}): " +
                                $"lane {laneId}, startNode? {startNode} must not have lane arrows");

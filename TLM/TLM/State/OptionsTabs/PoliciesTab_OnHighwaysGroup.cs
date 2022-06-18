@@ -48,7 +48,7 @@ namespace TrafficManager.State {
                     HighwayMergingRules.Value = false; // don't call UpdateRoutingManager() 2 times.
                     dontUpdateRoutingManager = false;
                 }
-                Flags.ClearHighwayLaneArrows();
+                LaneArrowManager.Instance.ClearHighwayLaneArrows();
                 Flags.ApplyAllFlags();
                 if (!dontUpdateRoutingManager) {
                     OptionsManager.UpdateRoutingManager();

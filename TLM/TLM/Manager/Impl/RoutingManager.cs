@@ -146,7 +146,7 @@ namespace TrafficManager.Manager.Impl {
                     updatedSegmentBuckets[segmentId >> 6] |= 1uL << (int)(segmentId & 63);
                 }
 
-                Flags.ClearHighwayLaneArrows();
+                LaneArrowManager.Instance.ClearHighwayLaneArrows();
                 segmentsUpdated = true;
 
                 if (Singleton<SimulationManager>.instance.SimulationPaused ||
@@ -200,7 +200,7 @@ namespace TrafficManager.Manager.Impl {
             bool logRouting = DebugSwitch.RoutingBasicLog.Get();
             Log._Debug($"RoutingManager.RecalculateAll: called");
 #endif
-            Flags.ClearHighwayLaneArrows();
+            LaneArrowManager.Instance.ClearHighwayLaneArrows();
             for (uint segmentId = 0; segmentId < NetManager.MAX_SEGMENT_COUNT; ++segmentId) {
                 try {
                     RecalculateSegment((ushort)segmentId);
@@ -289,7 +289,7 @@ namespace TrafficManager.Manager.Impl {
                         continue;
                     }
 
-                    Flags.RemoveHighwayLaneArrowFlags(laneIdAndIndex.laneId);
+                    LaneArrowManager.Instance.RemoveHighwayLaneArrowFlags(laneIdAndIndex.laneId);
                 }
             }
         }
@@ -1586,7 +1586,7 @@ namespace TrafficManager.Manager.Impl {
         }
 
         private void UpdateHighwayLaneArrows(uint laneId, bool startNode, ArrowDirection dir) {
-            LaneArrows? prevHighwayArrows = Flags.GetHighwayLaneArrowFlags(laneId);
+            LaneArrows? prevHighwayArrows = LaneArrowManager.Instance.GetHighwayLaneArrowFlags(laneId);
             var newHighwayArrows = LaneArrows.None;
 
             if (prevHighwayArrows != null) {
@@ -1606,7 +1606,7 @@ namespace TrafficManager.Manager.Impl {
             }
 
             if (newHighwayArrows != prevHighwayArrows && newHighwayArrows != LaneArrows.None) {
-                Flags.SetHighwayLaneArrowFlags(laneId, newHighwayArrows, false);
+                LaneArrowManager.Instance.SetHighwayLaneArrowFlags(laneId, newHighwayArrows, false);
             }
         }
 
@@ -1705,7 +1705,7 @@ namespace TrafficManager.Manager.Impl {
                 Log._Debug($"RoutingManager.HandleInvalidSegment({seg.segmentId}) called.");
             }
 
-            Flags.RemoveHighwayLaneArrowFlagsAtSegment(seg.segmentId);
+            LaneArrowManager.Instance.RemoveHighwayLaneArrowFlagsAtSegment(seg.segmentId);
             ResetRoutingData(seg.segmentId);
         }
 

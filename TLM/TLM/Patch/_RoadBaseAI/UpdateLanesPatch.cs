@@ -39,8 +39,8 @@ namespace TrafficManager.Patch._RoadBaseAI {
         private static void Forced(ushort segmentId) {
             uint laneId = segmentId.ToSegment().m_lanes;
             while (laneId != 0) {
-                if (!Flags.ApplyLaneArrowFlags(laneId)) {
-                    Flags.RemoveLaneArrowFlags(laneId);
+                if (!Manager.Impl.LaneArrowManager.Instance.ApplyLaneArrowFlags(laneId)) {
+                    Manager.Impl.LaneArrowManager.Instance.RemoveLaneArrowFlags(laneId);
                 }
 
                 laneId = laneId.ToLane().m_nextLane;

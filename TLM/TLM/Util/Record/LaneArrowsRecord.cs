@@ -14,7 +14,7 @@ namespace TrafficManager.Util.Record {
         private LaneArrows? arrows_;
 
         public void Record() {
-            arrows_ = Flags.GetLaneArrowFlags(LaneId);
+            arrows_ = LaneArrowManager.Instance.GetLaneArrowFlags(LaneId);
         }
 
         public void Restore() => Transfer(LaneId);
